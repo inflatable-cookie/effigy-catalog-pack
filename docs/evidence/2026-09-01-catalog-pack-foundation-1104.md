@@ -124,7 +124,7 @@ The no-push rehearsal performed all four in-memory cases:
 - changed annotated-tag identity: rejected without changing state.
 
 The live repository controls were read back from the GitHub API at
-`2026-09-01T22:14:13Z` and are normalized in
+`2026-09-01T22:20:25Z` and are normalized in
 [`hosted-controls.json`](hosted-controls.json):
 
 - Actions are enabled, use the selected-actions policy, require full-SHA
@@ -140,6 +140,10 @@ The live repository controls were read back from the GitHub API at
 `workflow-check` fails closed if this evidence is absent or any of those live
 control facts are weakened. The validation workflow has no package, attestation,
 tag, registry-push, stable-channel, or merge mutation.
+
+Hosted pull-request run `33565727349` passed at head
+`39e4629065c47b4e557fb02c27beec761f337f02`:
+<https://github.com/inflatable-cookie/effigy-catalog-pack/actions/runs/33565727349>
 
 ## Validation
 

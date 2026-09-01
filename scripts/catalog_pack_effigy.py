@@ -49,10 +49,24 @@ def hosted_control_check() -> dict[str, Any]:
     require(ruleset.get("rules") == ["deletion", "update"], "tag ruleset does not reject v* updates and deletions")
     require(ruleset.get("bypass_actors") == [], "tag ruleset has an unexpected bypass actor")
     require(ruleset.get("current_user_can_bypass") == "never", "current user can bypass the v* tag ruleset")
+    hosted_validation = evidence.get("hosted_validation")
+    require(isinstance(hosted_validation, dict), "hosted validation evidence is missing")
+    require(
+        isinstance(hosted_validation.get("run_id"), int) and hosted_validation["run_id"] > 0,
+        "hosted validation evidence lacks a run id",
+    )
+    require(
+        re.fullmatch(r"[0-9a-f]{40}", hosted_validation.get("head", "")) is not None,
+        "hosted validation evidence lacks a source head",
+    )
+    require(hosted_validation.get("event") == "pull_request", "hosted validation was not a pull-request run")
+    require(hosted_validation.get("conclusion") == "success", "hosted validation did not succeed")
+    require(isinstance(hosted_validation.get("url"), str) and hosted_validation["url"].startswith("https://"), "hosted validation URL is missing")
     return {
         "verified": True,
         "observed_at": evidence["observed_at"],
         "observed_head": evidence["observed_head"],
+        "hosted_validation_run": hosted_validation["run_id"],
         "actions_enabled": True,
         "environment_protected": True,
         "version_tags_protected": True,
