@@ -79,11 +79,11 @@ for that historical equality claim.
 ## Deterministic source and OCI identity
 
 The source-only OCI candidate was built from pack repository commit
-`a891b90883e644e21ebd54847be64abf15edc37c` at
-`2026-09-01T22:18:18Z`:
+`c935cefa5f6296cb7784d5c90ea393670de1fe2d` at
+`2026-09-01T22:24:54Z`:
 
 - reference: `ghcr.io/inflatable-cookie/effigy-catalog-pack:v1.0.0`
-- manifest digest: `sha256:f75bb1a92d6af9e08af1ca0dd33a1eb132c93a988909cc0f0c6ec683e751958b`
+- manifest digest: `sha256:a75b3716d00d4c379e310155f1526272b1969df05daa2c8f1cf8612c1eb5473f`
 - 42 sorted raw-file layers
 - ORAS local pull round-trip: passed with ORAS `1.3.3+Homebrew`
 
@@ -93,9 +93,9 @@ bytes. The Effigy import commit is not used as the OCI revision or timestamp.
 The no-push publication candidate adds the planned source identity:
 
 - source tag: `v1.0.0`
-- peeled/source commit: `a891b90883e644e21ebd54847be64abf15edc37c`
-- planned tag object hash: `a002cad044c9cb8def2a0bd11a9390830ccf5acc`
-- candidate digest: `sha256:86a8265818bb44cae44983072fb14dd9dbe4825aba16d0fbf8961303775d3df5`
+- peeled/source commit: `c935cefa5f6296cb7784d5c90ea393670de1fe2d`
+- planned tag object hash: `0cd2f73c2d283764ae652284beb4128313f9ed67`
+- candidate digest: `sha256:930e544043f903e251c075983b48403e525cfaaf53716b371a5bd2cca163ecf9`
 
 That tag object was hashed in memory only. No `v1.0.0` tag exists in the source
 repository. The protected manual workflow accepts an existing annotated tag
@@ -124,7 +124,7 @@ The no-push rehearsal performed all four in-memory cases:
 - changed annotated-tag identity: rejected without changing state.
 
 The live repository controls were read back from the GitHub API at
-`2026-09-01T22:21:42Z` and are normalized in
+`2026-09-01T22:25:38Z` and are normalized in
 [`hosted-controls.json`](hosted-controls.json):
 
 - Actions are enabled, use the selected-actions policy, require full-SHA
@@ -141,9 +141,9 @@ The live repository controls were read back from the GitHub API at
 control facts are weakened. The validation workflow has no package, attestation,
 tag, registry-push, stable-channel, or merge mutation.
 
-Hosted pull-request run `33565859809` passed at head
-`44777df182258f5fe7f74954c3f5d141d83a8d7e`:
-<https://github.com/inflatable-cookie/effigy-catalog-pack/actions/runs/33565859809>
+Hosted pull-request run `33566182172` passed at head
+`c935cefa5f6296cb7784d5c90ea393670de1fe2d`:
+<https://github.com/inflatable-cookie/effigy-catalog-pack/actions/runs/33566182172>
 
 ## Validation
 
