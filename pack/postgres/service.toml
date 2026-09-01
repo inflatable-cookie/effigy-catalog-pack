@@ -1,0 +1,42 @@
+[service]
+name = "postgres"
+description = "PostgreSQL database server"
+
+[params.version]
+type = "string"
+default = "16"
+description = "PostgreSQL version"
+
+[params.database]
+type = "string"
+default = "app"
+description = "Primary database name"
+
+[params.databases]
+type = "list"
+default = ["app"]
+description = "Databases to create; the first entry is treated as the primary database"
+
+[params.password]
+type = "string"
+default = "secret"
+description = "Superuser password (local dev only)"
+
+[capabilities]
+exec_target = true
+shell = "/bin/bash"
+loopback_alias_label = "postgres"
+loopback_alias_port = 5432
+shared_service = true
+shared_host_env_vars = ["POSTGRES_HOST", "PGHOST"]
+shared_port_env_vars = ["POSTGRES_PORT", "PGPORT"]
+
+[volumes.data]
+mount = "/var/lib/postgresql/data"
+named = true
+persist = true
+description = "Database storage"
+
+[ports]
+default = [5432]
+description = "PostgreSQL protocol port"

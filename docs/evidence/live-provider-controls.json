@@ -1,0 +1,67 @@
+{
+  "evidence_kind": "live-provider-observation",
+  "mode": "live-read-only",
+  "repository": "inflatable-cookie/effigy-catalog-pack",
+  "observed_at": "2026-09-01T22:40:37Z",
+  "observed_head": "9e3cc01b360a700647fd4f972ec905fbb1e61ad9",
+  "read_only": true,
+  "write_methods_used": [],
+  "api_calls": {
+    "actions": "GET /repos/inflatable-cookie/effigy-catalog-pack/actions/permissions",
+    "environment": "GET /repos/inflatable-cookie/effigy-catalog-pack/environments/catalog-pack-publication-rehearsal",
+    "selected_actions": "GET /repos/inflatable-cookie/effigy-catalog-pack/actions/permissions/selected-actions",
+    "tag_ruleset": "GET /repos/inflatable-cookie/effigy-catalog-pack/rulesets/22050144",
+    "workflow_permissions": "GET /repos/inflatable-cookie/effigy-catalog-pack/actions/permissions/workflow"
+  },
+  "static_snapshot": {
+    "path": "docs/evidence/hosted-controls.json",
+    "used_for_live_comparison": false
+  },
+  "actions": {
+    "enabled": true,
+    "allowed_actions": "selected",
+    "sha_pinning_required": true,
+    "selected_actions": {
+      "github_owned_allowed": false,
+      "patterns_allowed": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+      ],
+      "verified_allowed": false
+    }
+  },
+  "workflow_permissions": {
+    "default_workflow_permissions": "read",
+    "can_approve_pull_request_reviews": false
+  },
+  "environment": {
+    "id": 21041670008,
+    "name": "catalog-pack-publication-rehearsal",
+    "wait_timer": 0,
+    "prevent_self_review": false,
+    "can_admins_bypass": false,
+    "required_reviewers": [
+      {
+        "type": "User",
+        "login": "betterthanclay",
+        "id": 1273586
+      }
+    ],
+    "deployment_branch_policy": null
+  },
+  "tag_ruleset": {
+    "id": 22050144,
+    "name": "Protect v* catalog-pack release tags",
+    "target": "tag",
+    "enforcement": "active",
+    "ref_name_include": [
+      "refs/tags/v*"
+    ],
+    "rules": [
+      "deletion",
+      "update"
+    ],
+    "bypass_actors": [],
+    "current_user_can_bypass": "never"
+  },
+  "verified": true
+}

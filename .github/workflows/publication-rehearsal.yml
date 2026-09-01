@@ -1,0 +1,60 @@
+name: Catalog-pack publication rehearsal
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_tag:
+        description: Existing annotated source tag matching the pack version
+        required: true
+        type: string
+      source_ref:
+        description: Full peeled commit targeted by the annotated source tag
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  rehearsal:
+    environment: catalog-pack-publication-rehearsal
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out the catalog-pack source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check out the pinned Effigy authority
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: inflatable-cookie/effigy
+          ref: 055595340c2219d3d47296072f5818c524c341f0
+          path: .authority/effigy
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validate the independent pack source
+        run: python3 scripts/catalog_pack.py validate
+
+      - name: Verify the pinned Effigy support policy
+        run: python3 scripts/catalog_pack.py validate --effigy-root .authority/effigy --require-authority
+
+      - name: Build and verify the deterministic OCI candidate
+        run: python3 scripts/catalog_pack.py oci-layout
+
+      - name: Rehearse absent, same-digest, and collision outcomes
+        env:
+          SOURCE_TAG: ${{ inputs.source_tag }}
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: >-
+          python3 scripts/catalog_pack.py rehearse
+          --effigy-root .authority/effigy
+          --require-authority
+          --source-tag "$SOURCE_TAG"
+          --source-ref "$SOURCE_REF"
+
+      - name: Verify workflow permissions and pins
+        run: python3 scripts/catalog_pack.py workflow-check
