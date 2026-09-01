@@ -79,11 +79,11 @@ for that historical equality claim.
 ## Deterministic source and OCI identity
 
 The source-only OCI candidate was built from pack repository commit
-`71657514a0722282e2681fb51f2808430c912ef0` at
-`2026-09-01T21:38:38Z`:
+`a891b90883e644e21ebd54847be64abf15edc37c` at
+`2026-09-01T22:18:18Z`:
 
 - reference: `ghcr.io/inflatable-cookie/effigy-catalog-pack:v1.0.0`
-- manifest digest: `sha256:c3bb8bdf990af67af06a90c54a57ac8db2456199c9c42f908b0076b16450bceb`
+- manifest digest: `sha256:f75bb1a92d6af9e08af1ca0dd33a1eb132c93a988909cc0f0c6ec683e751958b`
 - 42 sorted raw-file layers
 - ORAS local pull round-trip: passed with ORAS `1.3.3+Homebrew`
 
@@ -93,9 +93,9 @@ bytes. The Effigy import commit is not used as the OCI revision or timestamp.
 The no-push publication candidate adds the planned source identity:
 
 - source tag: `v1.0.0`
-- peeled/source commit: `71657514a0722282e2681fb51f2808430c912ef0`
-- planned tag object hash: `9a0a5838b7798b08dc3b43a158c0c251237461c7`
-- candidate digest: `sha256:f164ffcd9312521d70f514d4c7473bb36139225c1a3cbfc62517a98c2c5fc9e8`
+- peeled/source commit: `a891b90883e644e21ebd54847be64abf15edc37c`
+- planned tag object hash: `a002cad044c9cb8def2a0bd11a9390830ccf5acc`
+- candidate digest: `sha256:86a8265818bb44cae44983072fb14dd9dbe4825aba16d0fbf8961303775d3df5`
 
 That tag object was hashed in memory only. No `v1.0.0` tag exists in the source
 repository. The protected manual workflow accepts an existing annotated tag

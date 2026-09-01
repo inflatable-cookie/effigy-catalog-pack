@@ -2,7 +2,7 @@
   "schema_version": 1,
   "repository": "inflatable-cookie/effigy-catalog-pack",
   "observed_at": "2026-09-01T22:14:13Z",
-  "observed_head": "71657514a0722282e2681fb51f2808430c912ef0",
+  "observed_head": "a891b90883e644e21ebd54847be64abf15edc37c",
   "actions": {
     "enabled": true,
     "allowed_actions": "selected",
