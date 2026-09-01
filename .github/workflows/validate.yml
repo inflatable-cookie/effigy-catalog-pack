@@ -1,0 +1,41 @@
+name: Validate catalog pack
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out the catalog-pack source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check out the pinned Effigy authority
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: inflatable-cookie/effigy
+          ref: 055595340c2219d3d47296072f5818c524c341f0
+          path: .authority/effigy
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validate source, support floor, and content identity
+        run: python3 scripts/catalog_pack.py validate --effigy-root .authority/effigy --require-authority
+
+      - name: Build and verify the deterministic OCI candidate
+        run: python3 scripts/catalog_pack.py oci-layout
+
+      - name: Rehearse immutable publication decisions without a push
+        run: python3 scripts/catalog_pack.py rehearse --effigy-root .authority/effigy --require-authority
+
+      - name: Check workflow scope and action pins
+        run: python3 scripts/catalog_pack.py workflow-check

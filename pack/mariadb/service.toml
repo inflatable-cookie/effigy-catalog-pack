@@ -1,0 +1,42 @@
+[service]
+name = "mariadb"
+description = "MariaDB database server"
+
+[params.version]
+type = "string"
+default = "10.11"
+description = "MariaDB version"
+
+[params.database]
+type = "string"
+default = "app"
+description = "Primary database name"
+
+[params.databases]
+type = "list"
+default = ["app"]
+description = "Databases to create; the first entry is treated as the primary database"
+
+[params.password]
+type = "string"
+default = "secret"
+description = "Root password (local dev only)"
+
+[capabilities]
+exec_target = true
+shell = "/bin/bash"
+loopback_alias_label = "mysql"
+loopback_alias_port = 3306
+shared_service = true
+shared_host_env_vars = ["DB_HOST", "MYSQL_HOST"]
+shared_port_env_vars = ["DB_PORT", "MYSQL_PORT"]
+
+[volumes.data]
+mount = "/var/lib/mysql"
+named = true
+persist = true
+description = "Database storage"
+
+[ports]
+default = [3306]
+description = "MySQL protocol port"

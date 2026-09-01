@@ -1,0 +1,27 @@
+[service]
+name = "mailpit"
+description = "Email testing tool — catches all outgoing SMTP and provides a web UI"
+
+[params.version]
+type = "string"
+default = "v1.30.6"
+description = "Mailpit version tag (pinned; v1.30.6 is the digest-verified `latest` as of 2026-07)"
+
+[params.smtp_port]
+type = "integer"
+default = 1025
+description = "SMTP port inside the container (configure your app to send mail here)"
+
+[params.ui_port]
+type = "integer"
+default = 8025
+description = "Web UI port for viewing caught emails"
+
+[capabilities]
+exec_target = false
+loopback_alias_label = "smtp"
+loopback_alias_port = 1025
+
+[ports]
+default = [1025, 8025]
+description = "SMTP (1025) and web UI (8025)"

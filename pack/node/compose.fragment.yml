@@ -1,0 +1,29 @@
+services:
+  {{ service_name }}:
+    build:
+      context: {{ repo_root }}
+      dockerfile: {{ catalog_path }}/Dockerfile
+      args:
+        NODE_VERSION: "{{ version }}"
+        WORKSPACE_UID: "{{ host_uid }}"
+        WORKSPACE_GID: "{{ host_gid }}"
+        WORKING_DIR: "{{ working_dir }}"
+    working_dir: {{ working_dir }}
+    command: ["sh", "-c", "{{ command }}"]
+    volumes:
+      - {{ repo_root }}:{{ working_dir }}
+      - {{ project_name }}-{{ service_name }}{{ working_dir | replace("/", "-") | replace("_", "-") }}-node-modules:{{ working_dir }}/node_modules
+    ports:
+      - "{{ port }}:{{ port }}"
+    environment:
+      NODE_ENV: development
+      PORT: "{{ port }}"
+{% if services.postgres %}
+    depends_on:
+      {{ services.postgres.name }}:
+        condition: service_started
+{% endif %}
+{% if services.redis %}
+      {{ services.redis.name }}:
+        condition: service_started
+{% endif %}

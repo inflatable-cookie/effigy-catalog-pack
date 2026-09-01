@@ -1,0 +1,123 @@
+[service]
+name = "php-fpm"
+description = "PHP-FPM application server with Composer and optional Node.js"
+
+[params.version]
+type = "string"
+default = "8.3"
+description = "PHP version (e.g., 7.4, 8.0, 8.1, 8.2, 8.3)"
+
+[params.extensions]
+type = "list"
+default = []
+description = "PHP extensions to install (e.g., pdo_mysql, gd, redis, memcached, intl, zip)"
+
+[params.document_root]
+type = "string"
+default = "public"
+description = "Document root relative to repo root"
+
+[params.working_dir]
+type = "string"
+default = "/var/www/html"
+description = "Container working directory where the repo is mounted"
+
+[params.mount_source]
+type = "string"
+default = ""
+description = "Host path to mount into `working_dir`. Empty keeps the default repo root mount."
+
+[params.isolated_dirs]
+type = "list"
+default = []
+description = "Directory paths (relative to `working_dir`) that should be backed by named Docker volumes instead of the host bind mount, e.g. `[\"vendor\", \"node_modules\"]` or `[\"packages/foo/vendor\"]`."
+
+[params.host_ports]
+type = "list"
+default = []
+description = "Explicit host port bindings to publish from the workspace container, e.g. `[\"5173:5173\"]` for a temporary Vite/Zest dev server."
+
+[params.node_version]
+type = "string"
+default = ""
+description = "Node.js major version to install (e.g., 20, 22). Empty to skip."
+
+[params.node_global_packages]
+type = "list"
+default = []
+description = "npm packages to install globally when Node.js is enabled (e.g., eclint)"
+
+[params.mount_host_composer_home]
+type = "bool"
+default = false
+description = "Mount the host Composer home into the workspace container when explicitly enabled and available"
+
+[params.mount_shared_composer_auth]
+type = "bool"
+default = true
+description = "Mount shared Effigy-managed Composer auth/config files into the workspace container"
+
+[params.mount_shared_composer_cache]
+type = "bool"
+default = true
+description = "Mount a shared Effigy-managed Composer cache directory into the workspace container"
+
+[params.composer_global_packages]
+type = "list"
+default = []
+description = "Composer packages to install globally in the container image as a fallback when no host Composer home is mounted"
+
+[params.mount_host_git_config]
+type = "bool"
+default = true
+description = "Mount the host's `~/.gitconfig` read-only into the workspace container so git inside the container inherits the developer's identity, aliases, and global ignore. Skipped silently when the host file does not exist."
+
+[params.mount_host_ssh_known_hosts]
+type = "bool"
+default = true
+description = "Mount the host's `~/.ssh/known_hosts` read-only into the workspace container so git/ssh from inside the container does not prompt on first connection to known remotes. Skipped silently when the host file does not exist."
+
+[params.mount_host_ssh_dir]
+type = "bool"
+default = false
+description = "Mount the host's full `~/.ssh` directory read-only at `/home/dev/.ssh` for trusted local-dev cases that depend on private key files, `IdentityFile`, or `IdentitiesOnly`. Takes precedence over the narrower SSH config and known_hosts mounts."
+
+[params.ssh_dir_path]
+type = "string"
+default = ""
+description = "Explicit path to a host SSH directory to mount read-only at `/home/dev/.ssh`. Supports `${VAR}` and `~`. Takes precedence over `mount_host_ssh_dir`, `mount_host_ssh_config`, and `ssh_config_path`."
+
+[params.mount_host_ssh_config]
+type = "bool"
+default = false
+description = "Mount the host's `~/.ssh/config` read-only into the workspace container when you explicitly want container SSH to reuse a container-safe host config. Disabled by default because many host configs depend on local-only `IdentityFile`, `Include`, or `IdentitiesOnly` rules that should stay explicit in container use. Skipped silently when the host file does not exist."
+
+[params.ssh_config_path]
+type = "string"
+default = ""
+description = "Explicit path to a container-safe SSH config file to mount at `/home/dev/.ssh/config`. Supports `${VAR}` and `~`. Takes precedence over `mount_host_ssh_config`."
+
+[params.forward_host_ssh_agent]
+type = "bool"
+default = true
+description = "Forward the host's SSH agent socket into the workspace container (Colima exposes it at `/run/host-services/ssh-auth.sock`) and set `SSH_AUTH_SOCK` accordingly so git pushes over SSH use the developer's already-loaded keys without copying private material into the container. Skipped silently when the socket is not present on the host."
+
+[params.mount_host_mkcert_ca]
+type = "bool"
+default = true
+description = "Mount the host's mkcert root CA (`$(mkcert -CAROOT)/rootCA.pem`) read-only at `/usr/local/share/ca-certificates/effigy-mkcert.crt`. The image's `effigy-entrypoint` runs `update-ca-certificates` on container start so HTTPS calls from inside the container trust the host gateway's mkcert-issued certs. Skipped silently when mkcert is not installed or has not generated a root CA."
+
+[capabilities]
+exec_target = true
+shell = "/bin/bash"
+workspace_host_integration = true
+installs_mkcert_ca = true
+
+[volumes.pnpm-store]
+mount = "/home/dev/.local/share/pnpm/store"
+named = true
+persist = false
+description = "pnpm content-addressable store kept on Linux-native storage outside the repo bind mount"
+
+[depends_on]
+optional = ["mariadb", "postgres", "redis", "memcached"]
