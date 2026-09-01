@@ -44,7 +44,24 @@ The two workflows are intentionally narrow:
 - `publication-rehearsal.yml` is manual, accepts only an existing annotated
   source tag plus its full peeled commit, and names the protected
   `catalog-pack-publication-rehearsal` environment. It still has only
-  `contents: read` permission and performs no publication mutation.
-- `docs/evidence/hosted-controls.json` records the live repository Actions
-  policy, environment protection, and `v*` update/deletion ruleset consumed by
-  `workflow-check`.
+  `contents: read` permission, binds dispatch inputs through step `env`, quotes
+  the shell variables, and performs no publication mutation. `workflow-check`
+  rejects raw `inputs.*` expressions in `run:` blocks and tests a malicious
+  counterexample.
+- `docs/evidence/hosted-controls.json` is a checked-in static provider
+  snapshot consumed by the network-free `workflow-check`; it is not a claim
+  that the provider still has those settings or that a hosted run passed.
+
+For an authenticated operator-only closeout, run the separate live verifier:
+
+```sh
+python3 scripts/catalog_pack.py provider-controls
+# or: effigy pack:provider-controls
+```
+
+It uses only explicit GitHub `GET` requests, compares the current Actions
+policy, workflow permissions, protected environment, and `v*` ruleset, and
+does not read or rewrite the static snapshot. The captured observation is
+[`live-provider-controls.json`](evidence/live-provider-controls.json). Hosted
+pull-request validation is recorded separately from both provider evidence
+files so an evidence commit cannot make its own run evidence self-referential.

@@ -54,6 +54,30 @@ peeled commit.
 Hosted Actions, environment, and tag-rule evidence is normalized in
 [hosted-controls.json](docs/evidence/hosted-controls.json).
 
+`hosted-controls.json` is a checked-in static provider snapshot used by the
+network-free `workflow-check`; it is not a live guarantee and does not contain
+current-head Actions-run evidence. An authenticated operator can verify the
+current controls independently with:
+
+```sh
+python3 scripts/catalog_pack.py provider-controls
+# or: effigy pack:provider-controls
+```
+
+That command performs only explicit GitHub `GET` requests and compares the
+live Actions policy, workflow permissions, protected environment, and `v*`
+ruleset. Its output is marked `live-provider-observation` and does not read the
+static snapshot. The recorded observation is
+[live-provider-controls.json](docs/evidence/live-provider-controls.json).
+
+The protected environment retains exactly one required reviewer,
+`betterthanclay`; self-review is permitted so that this single operator can
+approve its own manual rehearsal, while administrator bypass remains disabled.
+No collaborator access is added. The manual workflow passes dispatch inputs
+through step environment variables and quoted shell variables, and
+`workflow-check` includes a raw-input injection counterexample as a recurrence
+guard.
+
 The `pack:effigy` task installs `pack/` into a temporary Effigy home and
 exercises service listing, fragment extraction, and a workspace-plus-Postgres
 compose assembly. It never starts a container. The deterministic OCI task

@@ -23,7 +23,7 @@ API_PATHS = {
 def _gh_json(path: str) -> dict[str, Any]:
     gh = shutil.which("gh")
     require(gh is not None, "live provider verification requires the GitHub CLI (gh)")
-    result = run_command([gh, "api", path], check=False)
+    result = run_command([gh, "api", "--method", "GET", path], check=False)
     if result.returncode != 0:
         detail = decode_output(result.stderr) or decode_output(result.stdout)
         fail(f"read-only provider GET failed for {path}: {detail}")

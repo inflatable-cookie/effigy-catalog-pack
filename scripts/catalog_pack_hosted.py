@@ -121,6 +121,9 @@ def workflow_check() -> dict[str, Any]:
         expression = re.compile(r"\$\{\{\s*inputs\.[A-Za-z_][A-Za-z0-9_]*\s*\}\}")
         return any(expression.search(block) for block in run_blocks(contents))
 
+    def require_no_raw_input_in_run(contents: str) -> None:
+        require(not has_raw_input_in_run(contents), "publication rehearsal interpolates a workflow input directly in run")
+
     validation = (workflow_root / "validate.yml").read_text()
     rehearsal = (workflow_root / "publication-rehearsal.yml").read_text()
     require("pull_request:" in validation, "validate workflow must run for pull requests")
@@ -146,7 +149,7 @@ def workflow_check() -> dict[str, Any]:
     require("SOURCE_REF: ${{ inputs.source_ref }}" in rehearsal, "publication rehearsal must bind source_ref through step env")
     require('--source-tag "$SOURCE_TAG"' in rehearsal, "publication rehearsal must quote the source_tag shell variable")
     require('--source-ref "$SOURCE_REF"' in rehearsal, "publication rehearsal must quote the source_ref shell variable")
-    require(not has_raw_input_in_run(rehearsal), "publication rehearsal interpolates a workflow input directly in run")
+    require_no_raw_input_in_run(rehearsal)
 
     injection_counterexample = """
       - name: Input injection counterexample
@@ -154,6 +157,12 @@ def workflow_check() -> dict[str, Any]:
           printf '%s\\n' "${{ inputs.source_tag }}"
     """
     require(has_raw_input_in_run(injection_counterexample), "workflow input injection counterexample missed the run guard")
+    try:
+        require_no_raw_input_in_run(injection_counterexample)
+    except CheckFailure:
+        pass
+    else:
+        fail("workflow input injection counterexample bypassed the run guard")
     hosted = hosted_control_check()
     return {
         "workflow_files": sorted(expected),

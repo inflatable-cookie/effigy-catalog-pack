@@ -79,11 +79,11 @@ for that historical equality claim.
 ## Deterministic source and OCI identity
 
 The source-only OCI candidate was built from pack repository commit
-`c935cefa5f6296cb7784d5c90ea393670de1fe2d` at
-`2026-09-01T22:24:54Z`:
+`9e3cc01b360a700647fd4f972ec905fbb1e61ad9` at
+`2026-09-01T22:38:35Z`:
 
 - reference: `ghcr.io/inflatable-cookie/effigy-catalog-pack:v1.0.0`
-- manifest digest: `sha256:a75b3716d00d4c379e310155f1526272b1969df05daa2c8f1cf8612c1eb5473f`
+- manifest digest: `sha256:d7cfa69a7b6a90ca40f45d514e2be77fc43217ea7c88529914d0cea054ceab3a`
 - 42 sorted raw-file layers
 - ORAS local pull round-trip: passed with ORAS `1.3.3+Homebrew`
 
@@ -93,9 +93,9 @@ bytes. The Effigy import commit is not used as the OCI revision or timestamp.
 The no-push publication candidate adds the planned source identity:
 
 - source tag: `v1.0.0`
-- peeled/source commit: `c935cefa5f6296cb7784d5c90ea393670de1fe2d`
-- planned tag object hash: `0cd2f73c2d283764ae652284beb4128313f9ed67`
-- candidate digest: `sha256:930e544043f903e251c075983b48403e525cfaaf53716b371a5bd2cca163ecf9`
+- peeled/source commit: `9e3cc01b360a700647fd4f972ec905fbb1e61ad9`
+- planned tag object hash: `e30264d381436d002940ce6f48630490f317e136`
+- candidate digest: `sha256:829652b20f3578d584601a2f3ad68c8220bc47ee6334ab42fe0fe6fc7338bff5`
 
 That tag object was hashed in memory only. No `v1.0.0` tag exists in the source
 repository. The protected manual workflow accepts an existing annotated tag
@@ -123,27 +123,48 @@ The no-push rehearsal performed all four in-memory cases:
 - changed source identity/content: rejected without changing state; and
 - changed annotated-tag identity: rejected without changing state.
 
-The live repository controls were read back from the GitHub API at
-`2026-09-01T22:25:38Z` and are normalized in
-[`hosted-controls.json`](hosted-controls.json):
+The checked-in [`hosted-controls.json`](hosted-controls.json) is a static
+provider snapshot, observed at `2026-09-01T22:40:37Z` from repair head
+`9e3cc01b360a700647fd4f972ec905fbb1e61ad9`. It is consumed only by the
+network-free `workflow-check`; it is not a live assertion and it intentionally
+does not contain hosted-run evidence.
+
+The separate [`live-provider-controls.json`](live-provider-controls.json) was
+produced by `python3 scripts/catalog_pack.py provider-controls` at
+`2026-09-01T22:40:37Z`. That operator/reviewer closeout path made only these
+read-only requests:
+
+- `GET /repos/inflatable-cookie/effigy-catalog-pack/actions/permissions`
+- `GET /repos/inflatable-cookie/effigy-catalog-pack/actions/permissions/selected-actions`
+- `GET /repos/inflatable-cookie/effigy-catalog-pack/actions/permissions/workflow`
+- `GET /repos/inflatable-cookie/effigy-catalog-pack/environments/catalog-pack-publication-rehearsal`
+- `GET /repos/inflatable-cookie/effigy-catalog-pack/rulesets/22050144`
+
+The live comparison verified:
 
 - Actions are enabled, use the selected-actions policy, require full-SHA
   pinning, and allow only `actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1`.
-- `catalog-pack-publication-rehearsal` has one required reviewer, zero wait
-  minutes, self-review disabled, administrator bypass disabled, and no
-  deployment branch restriction.
+- `catalog-pack-publication-rehearsal` has exactly one required reviewer,
+  `betterthanclay`, zero wait minutes, self-review permitted for the sole
+  operator, administrator bypass disabled, and no deployment branch
+  restriction. No collaborator access was added.
 - Ruleset `22050144` is active for exactly `refs/tags/v*`, rejects `update` and
   `deletion`, and has no bypass actors.
 - The repository workflow default remains read-only and cannot approve pull
   request reviews.
 
-`workflow-check` fails closed if this evidence is absent or any of those live
-control facts are weakened. The validation workflow has no package, attestation,
-tag, registry-push, stable-channel, or merge mutation.
+`workflow-check` fails closed if the static intended-policy snapshot is absent
+or weakened. `provider-controls` independently fails closed if the live API
+state differs; it does not read the static snapshot. The manual rehearsal binds
+workflow inputs through step `env` and quoted shell variables, and
+`workflow-check` proves its raw-`inputs.*` shell-injection counterexample is
+rejected. Neither workflow has a package, attestation, tag, registry-push,
+stable-channel, collaborator-role, or merge mutation.
 
-Hosted pull-request run `33566182172` passed at head
-`c935cefa5f6296cb7784d5c90ea393670de1fe2d`:
-<https://github.com/inflatable-cookie/effigy-catalog-pack/actions/runs/33566182172>
+The current-head hosted pull-request validation is kept separate from these
+provider snapshots and is linked in the completion notification after the
+final evidence commit. This prevents an evidence commit from embedding a run
+that no longer validates its own head.
 
 ## Validation
 
@@ -153,6 +174,7 @@ Hosted pull-request run `33566182172` passed at head
 - `python3 scripts/catalog_pack.py oci-layout` — pass
 - `python3 scripts/catalog_pack.py rehearse --effigy-root ../effigy --require-authority` — pass
 - `python3 scripts/catalog_pack.py portable-check` — isolated authority lookup fails closed
+- `python3 scripts/catalog_pack.py provider-controls` — live provider comparison passed with GET-only calls
 - `effigy test --plan` — pass
 - `effigy validate` — pass
 - `effigy qa` — pass
@@ -160,4 +182,5 @@ Hosted pull-request run `33566182172` passed at head
 - `git diff --check` — pass
 
 No source tag, package, registry object, attestation, stable-channel movement,
-or Effigy sibling checkout change was made by this card.
+visibility change, collaborator-role change, or Effigy sibling checkout change
+was made by this card.
