@@ -10,7 +10,8 @@ from pathlib import Path
 from typing import Any
 
 from catalog_pack_authority import prove_import, prove_support, resolve_authority
-from catalog_pack_effigy import effigy_smoke, portable_authority_check, workflow_check
+from catalog_pack_effigy import effigy_smoke
+from catalog_pack_hosted import portable_authority_check, workflow_check
 from catalog_pack_oci import build_oci_layout, deterministic_oci_proof, prepare_layout_output
 from catalog_pack_publication import no_push_rehearsal
 from catalog_pack_shared import (
