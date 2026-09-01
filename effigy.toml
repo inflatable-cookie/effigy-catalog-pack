@@ -3,7 +3,9 @@ minimum_effigy_version = "0.12.1"
 
 [tasks]
 "pack:inventory" = "python3 scripts/catalog_pack.py inventory"
-"pack:validate" = "python3 scripts/catalog_pack.py validate --require-authority"
+"pack:validate" = "python3 scripts/catalog_pack.py validate"
+"pack:support" = "python3 scripts/catalog_pack.py validate --require-authority"
+"pack:import-proof" = "python3 scripts/catalog_pack.py import-proof"
 "pack:oci" = "python3 scripts/catalog_pack.py oci-layout"
 "pack:rehearse" = "python3 scripts/catalog_pack.py rehearse --require-authority"
 "pack:effigy" = "python3 scripts/catalog_pack.py effigy-smoke --require-authority"
@@ -16,6 +18,7 @@ health = [
 
 validate = [
   { task = "pack:validate" },
+  { task = "pack:support" },
   { task = "pack:oci" },
   { task = "pack:rehearse" },
 ]

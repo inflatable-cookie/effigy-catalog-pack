@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "repository": "inflatable-cookie/effigy-catalog-pack",
+  "observed_at": "2026-09-01T22:14:13Z",
+  "observed_head": "71657514a0722282e2681fb51f2808430c912ef0",
+  "actions": {
+    "enabled": true,
+    "allowed_actions": "selected",
+    "sha_pinning_required": true,
+    "selected_actions": {
+      "github_owned_allowed": false,
+      "verified_allowed": false,
+      "patterns_allowed": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+      ]
+    }
+  },
+  "environment": {
+    "name": "catalog-pack-publication-rehearsal",
+    "wait_timer": 0,
+    "prevent_self_review": true,
+    "can_admins_bypass": false,
+    "required_reviewers": [
+      {
+        "type": "User",
+        "login": "betterthanclay",
+        "id": 1273586
+      }
+    ],
+    "deployment_branch_policy": null
+  },
+  "tag_ruleset": {
+    "id": 22050144,
+    "target": "tag",
+    "enforcement": "active",
+    "ref_name_include": [
+      "refs/tags/v*"
+    ],
+    "rules": [
+      "deletion",
+      "update"
+    ],
+    "bypass_actors": [],
+    "current_user_can_bypass": "never"
+  },
+  "api_observations": {
+    "actions": "GET /repos/inflatable-cookie/effigy-catalog-pack/actions/permissions",
+    "selected_actions": "GET /repos/inflatable-cookie/effigy-catalog-pack/actions/permissions/selected-actions",
+    "workflow_permissions": "GET /repos/inflatable-cookie/effigy-catalog-pack/actions/permissions/workflow",
+    "environment": "GET /repos/inflatable-cookie/effigy-catalog-pack/environments/catalog-pack-publication-rehearsal",
+    "tag_ruleset": "GET /repos/inflatable-cookie/effigy-catalog-pack/rulesets/22050144"
+  }
+}

@@ -1,21 +1,27 @@
-"""Pinned Effigy source and support-policy proof."""
+"""Pinned Effigy support proof and one-time catalog import proof."""
 
 from __future__ import annotations
 
+from typing import Mapping
+
 from catalog_pack_shared import *
 
-def resolve_authority(explicit: str | None) -> Path | None:
+
+def resolve_authority(
+    explicit: str | None,
+    repo_root: Path = ROOT,
+    environment: Mapping[str, str] | None = None,
+) -> Path | None:
+    """Resolve only explicit, configured, or conventional sibling authority."""
+
+    env = os.environ if environment is None else environment
     candidates: list[Path] = []
     if explicit:
         candidates.append(Path(explicit))
-    if os.environ.get("EFFIGY_ROOT"):
-        candidates.append(Path(os.environ["EFFIGY_ROOT"]))
-    candidates.extend(
-        [
-            ROOT.parent / "effigy",
-            Path("/Users/tom/Dev/projects/effigy"),
-        ]
-    )
+    if env.get("EFFIGY_ROOT"):
+        candidates.append(Path(env["EFFIGY_ROOT"]))
+    candidates.append(repo_root.parent / "effigy")
+
     seen: set[Path] = set()
     for candidate in candidates:
         try:
@@ -32,7 +38,10 @@ def resolve_authority(explicit: str | None) -> Path | None:
 
 def source_git_inventory(authority: Path) -> list[tuple[str, str, str]]:
     prefix = SOURCE_CATALOG_RELATIVE.as_posix().encode("utf-8") + b"/"
-    raw = git_bytes(authority, ["ls-tree", "-r", "-z", AUTHORITY_COMMIT, "--", SOURCE_CATALOG_RELATIVE.as_posix()])
+    raw = git_bytes(
+        authority,
+        ["ls-tree", "-r", "-z", IMPORT_AUTHORITY_COMMIT, "--", SOURCE_CATALOG_RELATIVE.as_posix()],
+    )
     entries: list[tuple[str, str, str]] = []
     for record in raw.split(b"\0"):
         if not record:
@@ -51,51 +60,14 @@ def source_git_inventory(authority: Path) -> list[tuple[str, str, str]]:
     return sorted(entries)
 
 
-def prove_authority(authority: Path | None, require_authority: bool) -> dict[str, Any]:
-    if authority is None:
-        if require_authority:
-            fail("Effigy authority checkout is required; pass --effigy-root or set EFFIGY_ROOT")
-        return {"authority": "not provided", "source_checked": False, "support_checked": False}
-
-    head = git_output(authority, ["rev-parse", "HEAD"])
-    require(head == AUTHORITY_COMMIT, f"Effigy authority HEAD is {head}, expected {AUTHORITY_COMMIT}")
-    require(
-        git_output(authority, ["rev-parse", f"{AUTHORITY_COMMIT}^{{commit}}"]) == AUTHORITY_COMMIT,
-        "pinned Effigy authority commit is not available",
-    )
-
-    source_root = authority / SOURCE_CATALOG_RELATIVE
-    source_files, _ = collect_tree(source_root)
-    require(
-        source_files == sorted(SOURCE_FILES),
-        describe_difference("Effigy source files", source_files, sorted(SOURCE_FILES)),
-    )
-    source_entries = source_git_inventory(authority)
-    require(
-        [entry[0] for entry in source_entries] == sorted(SOURCE_FILES),
-        "pinned Effigy catalog tree inventory differs from the expected source",
-    )
-    tree = git_output(authority, ["rev-parse", f"{AUTHORITY_COMMIT}:{SOURCE_CATALOG_RELATIVE.as_posix()}"])
-    require(tree == AUTHORITY_TREE, f"Effigy catalog tree is {tree}, expected {AUTHORITY_TREE}")
-
-    for relative in SOURCE_FILES:
-        source_path = source_root / relative
-        committed = git_bytes(authority, ["show", f"{AUTHORITY_COMMIT}:{(SOURCE_CATALOG_RELATIVE / relative).as_posix()}" ])
-        require(
-            source_path.read_bytes() == committed == (PACK_ROOT / relative).read_bytes(),
-            f"source bytes differ for {relative}",
-        )
-
-    support_bytes = git_bytes(authority, ["show", f"{AUTHORITY_COMMIT}:{SUPPORT_RELATIVE.as_posix()}"])
-    support_oid = git_output(authority, ["rev-parse", f"{AUTHORITY_COMMIT}:{SUPPORT_RELATIVE.as_posix()}"])
-    require(support_oid == SUPPORT_BLOB, f"support blob is {support_oid}, expected {SUPPORT_BLOB}")
+def _read_support(authority: Path) -> tuple[bytes, dict[str, Any]]:
+    support_bytes = git_bytes(authority, ["show", f"{IMPORT_AUTHORITY_COMMIT}:{SUPPORT_RELATIVE.as_posix()}"])
+    support_oid = git_output(authority, ["rev-parse", f"{IMPORT_AUTHORITY_COMMIT}:{SUPPORT_RELATIVE.as_posix()}"])
+    require(support_oid == IMPORT_SUPPORT_BLOB, f"support blob is {support_oid}, expected {IMPORT_SUPPORT_BLOB}")
     calculated_support_oid = hashlib.sha1(
         b"blob " + str(len(support_bytes)).encode("ascii") + b"\0" + support_bytes
     ).hexdigest()
-    require(calculated_support_oid == SUPPORT_BLOB, "support Git blob OID does not match its bytes")
-    support_path = authority / SUPPORT_RELATIVE
-    if support_path.exists():
-        require(support_path.read_bytes() == support_bytes, "Effigy support worktree differs from pinned commit")
+    require(calculated_support_oid == IMPORT_SUPPORT_BLOB, "support Git blob OID does not match its bytes")
     try:
         support = parse_toml(support_bytes.decode("utf-8"))
     except (UnicodeDecodeError, TOMLDecodeError) as error:
@@ -109,20 +81,91 @@ def prove_authority(authority: Path | None, require_authority: bool) -> dict[str
         "pinned Effigy support policy is not the closed 0.12.1 floor",
     )
     require("oldest_update_capable_release" not in support, "support policy exposes an update floor too early")
+    return support_bytes, support
 
-    cargo_text = git_bytes(authority, ["show", f"{AUTHORITY_COMMIT}:Cargo.toml"]).decode("utf-8")
+
+def _require_pinned_commit(authority: Path) -> None:
+    head = git_output(authority, ["rev-parse", "HEAD"])
+    require(head == IMPORT_AUTHORITY_COMMIT, f"Effigy authority HEAD is {head}, expected {IMPORT_AUTHORITY_COMMIT}")
+    require(
+        git_output(authority, ["rev-parse", f"{IMPORT_AUTHORITY_COMMIT}^{{commit}}"]) == IMPORT_AUTHORITY_COMMIT,
+        "pinned Effigy authority commit is not available",
+    )
+
+
+def prove_support(authority: Path | None, require_authority: bool) -> dict[str, Any]:
+    """Prove only Effigy's compatibility input, never pack source ownership."""
+
+    if authority is None:
+        if require_authority:
+            fail("Effigy authority checkout is required; pass --effigy-root or set EFFIGY_ROOT")
+        return {"authority": "not provided", "source_checked": False, "support_checked": False}
+
+    _require_pinned_commit(authority)
+    support_bytes, _ = _read_support(authority)
+    support_path = authority / SUPPORT_RELATIVE
+    if support_path.exists():
+        require(support_path.read_bytes() == support_bytes, "Effigy support worktree differs from pinned commit")
+    cargo_text = git_bytes(authority, ["show", f"{IMPORT_AUTHORITY_COMMIT}:Cargo.toml"]).decode("utf-8")
     require(
         f'version = "{CURRENT_EFFIGY_RELEASE}"' in cargo_text,
         "pinned Effigy workspace release does not match the support floor",
     )
     return {
         "authority": str(authority),
-        "authority_commit": AUTHORITY_COMMIT,
-        "catalog_tree": AUTHORITY_TREE,
-        "source_checked": True,
+        "authority_commit": IMPORT_AUTHORITY_COMMIT,
+        "source_checked": False,
+        "support_checked": True,
+        "support_blob_oid": IMPORT_SUPPORT_BLOB,
+        "support_as_of_release": CURRENT_EFFIGY_RELEASE,
+    }
+
+
+def prove_import(authority: Path | None) -> dict[str, Any]:
+    """Prove the immutable foundation import exactly once when requested."""
+
+    require(authority is not None, "Effigy authority checkout is required for the import proof")
+    _require_pinned_commit(authority)
+    source_root = authority / SOURCE_CATALOG_RELATIVE
+    source_files, _ = collect_tree(source_root)
+    require(
+        source_files == sorted(SOURCE_FILES),
+        describe_difference("Effigy source files", source_files, sorted(SOURCE_FILES)),
+    )
+    source_entries = source_git_inventory(authority)
+    require(
+        [entry[0] for entry in source_entries] == sorted(SOURCE_FILES),
+        "pinned Effigy catalog tree inventory differs from the expected source",
+    )
+    tree = git_output(authority, ["rev-parse", f"{IMPORT_AUTHORITY_COMMIT}:{SOURCE_CATALOG_RELATIVE.as_posix()}"])
+    require(tree == IMPORT_AUTHORITY_TREE, f"Effigy catalog tree is {tree}, expected {IMPORT_AUTHORITY_TREE}")
+
+    pack_files, _ = collect_tree(PACK_ROOT)
+    require(
+        pack_files == sorted(PACK_FILES),
+        describe_difference("foundation pack files", pack_files, sorted(PACK_FILES)),
+    )
+    for relative in SOURCE_FILES:
+        source_path = source_root / relative
+        committed = git_bytes(
+            authority,
+            ["show", f"{IMPORT_AUTHORITY_COMMIT}:{(SOURCE_CATALOG_RELATIVE / relative).as_posix()}"],
+        )
+        require(
+            source_path.read_bytes() == committed == (PACK_ROOT / relative).read_bytes(),
+            f"source bytes differ for {relative}",
+        )
+
+    pack_facts = validate_pack_tree()
+    require(
+        pack_facts["content_id"] == FOUNDATION_PACK_CONTENT_ID,
+        f"foundation pack content identity changed: {pack_facts['content_id']}",
+    )
+    return {
+        "import_checked": True,
+        "authority_commit": IMPORT_AUTHORITY_COMMIT,
+        "catalog_tree": IMPORT_AUTHORITY_TREE,
         "source_file_count": len(SOURCE_FILES),
         "source_byte_count": sum((source_root / relative).stat().st_size for relative in SOURCE_FILES),
-        "support_checked": True,
-        "support_blob_oid": SUPPORT_BLOB,
-        "support_as_of_release": CURRENT_EFFIGY_RELEASE,
+        "pack_content_id": pack_facts["content_id"],
     }

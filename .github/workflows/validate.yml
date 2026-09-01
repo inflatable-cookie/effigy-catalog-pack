@@ -28,7 +28,10 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Validate source, support floor, and content identity
+      - name: Validate the independent pack source
+        run: python3 scripts/catalog_pack.py validate
+
+      - name: Verify the pinned Effigy support policy
         run: python3 scripts/catalog_pack.py validate --effigy-root .authority/effigy --require-authority
 
       - name: Build and verify the deterministic OCI candidate

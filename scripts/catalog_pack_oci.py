@@ -1,8 +1,11 @@
-"""Deterministic OCI layout and no-push publication rehearsal."""
+"""Deterministic OCI layout for the canonical pack source."""
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from catalog_pack_shared import *
+
 
 def canonical_json(value: Any) -> bytes:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -34,15 +37,70 @@ def prepare_layout_output(output: Path) -> None:
     shutil.rmtree(output)
 
 
-def build_oci_layout(output: Path) -> dict[str, Any]:
+def source_repository_identity() -> dict[str, str]:
+    """Resolve OCI provenance from this source repository, not Effigy."""
+
+    status = run_command(["git", "-C", str(ROOT), "status", "--porcelain", "--", "pack"])
+    require(not decode_output(status.stdout), "pack source has uncommitted changes; commit it before OCI identity proof")
+    source_commit = git_output(ROOT, ["rev-parse", "HEAD"])
+    require(re.fullmatch(r"[0-9a-f]{40}", source_commit) is not None, "source repository HEAD is not a full commit")
+    try:
+        epoch = int(git_output(ROOT, ["show", "-s", "--format=%ct", source_commit]))
+        created = datetime.fromtimestamp(epoch, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    except (TypeError, ValueError, OverflowError) as error:
+        fail(f"source repository commit timestamp is invalid: {error}")
+    return {"source_commit": source_commit, "source_created": created}
+
+
+def validate_source_identity(identity: dict[str, str], pack_version: str, require_tag: bool = False) -> None:
+    source_commit = identity.get("source_commit", "")
+    source_created = identity.get("source_created", "")
+    require(re.fullmatch(r"[0-9a-f]{40}", source_commit) is not None, "OCI source revision is not a full commit")
+    require(re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", source_created) is not None, "OCI source timestamp is not UTC RFC3339")
+    has_tag = "source_tag" in identity or "tag_object" in identity or "peeled_commit" in identity
+    require(not require_tag or has_tag, "publication rehearsal requires annotated source-tag identity")
+    if has_tag:
+        require(identity.get("source_tag") == f"v{pack_version}", "source tag does not match pack version")
+        require(re.fullmatch(r"[0-9a-f]{40}", identity.get("tag_object", "")) is not None, "source tag object is not a full object id")
+        require(identity.get("peeled_commit") == source_commit, "annotated source tag does not peel to the source commit")
+        require(identity.get("source_ref") == source_commit, "source ref does not match the peeled source commit")
+
+
+def manifest_annotations(pack_facts: dict[str, Any], source_identity: dict[str, str]) -> dict[str, str]:
+    annotations = {
+        "io.effigy.catalog.pack.content-id": pack_facts["content_id"],
+        "org.opencontainers.image.created": source_identity["source_created"],
+        "org.opencontainers.image.revision": source_identity["source_commit"],
+        "org.opencontainers.image.source": SOURCE_URL,
+        "org.opencontainers.image.version": pack_facts["pack_version"],
+    }
+    if "source_tag" in source_identity:
+        annotations.update(
+            {
+                "io.effigy.catalog.pack.source-tag": source_identity["source_tag"],
+                "io.effigy.catalog.pack.source-tag-object": source_identity["tag_object"],
+                "io.effigy.catalog.pack.source-commit": source_identity["peeled_commit"],
+            }
+        )
+    return annotations
+
+
+def build_oci_layout(
+    output: Path,
+    pack_root: Path = PACK_ROOT,
+    source_identity: dict[str, str] | None = None,
+) -> dict[str, Any]:
     require(not output.exists(), f"OCI layout output already exists: {output}")
+    pack_facts = validate_pack_tree(pack_root)
+    identity = source_identity or source_repository_identity()
+    validate_source_identity(identity, pack_facts["pack_version"])
     output.mkdir(parents=True)
     (output / "blobs" / "sha256").mkdir(parents=True)
 
-    files, _ = collect_tree(PACK_ROOT)
+    files, _ = collect_tree(pack_root)
     layer_descriptors: list[dict[str, Any]] = []
     for relative in files:
-        data = (PACK_ROOT / relative).read_bytes()
+        data = (pack_root / relative).read_bytes()
         digest = write_blob(output, data)
         layer_descriptors.append(
             {
@@ -56,13 +114,7 @@ def build_oci_layout(output: Path) -> dict[str, Any]:
     empty_config = b"{}"
     config_digest = write_blob(output, empty_config)
     manifest = {
-        "annotations": {
-            "io.effigy.catalog.pack.content-id": PACK_CONTENT_ID,
-            "org.opencontainers.image.created": SOURCE_CREATED,
-            "org.opencontainers.image.revision": AUTHORITY_COMMIT,
-            "org.opencontainers.image.source": SOURCE_URL,
-            "org.opencontainers.image.version": PACK_VERSION,
-        },
+        "annotations": manifest_annotations(pack_facts, identity),
         "artifactType": OCI_ARTIFACT_TYPE,
         "config": {
             "data": base64.b64encode(empty_config).decode("ascii"),
@@ -78,9 +130,9 @@ def build_oci_layout(output: Path) -> dict[str, Any]:
     manifest_digest = write_blob(output, manifest_bytes)
     descriptor = {
         "annotations": {
-            "org.opencontainers.image.created": SOURCE_CREATED,
-            "org.opencontainers.image.ref.name": f"v{PACK_VERSION}",
-            "org.opencontainers.image.version": PACK_VERSION,
+            "org.opencontainers.image.created": identity["source_created"],
+            "org.opencontainers.image.ref.name": f"v{pack_facts['pack_version']}",
+            "org.opencontainers.image.version": pack_facts["pack_version"],
         },
         "artifactType": OCI_ARTIFACT_TYPE,
         "digest": manifest_digest,
@@ -90,19 +142,20 @@ def build_oci_layout(output: Path) -> dict[str, Any]:
     index = {"manifests": [descriptor], "mediaType": OCI_INDEX_MEDIA_TYPE, "schemaVersion": 2}
     (output / "oci-layout").write_bytes(canonical_json({"imageLayoutVersion": OCI_LAYOUT_VERSION}))
     (output / "index.json").write_bytes(canonical_json(index))
-    verify_oci_layout(output)
+    verify_oci_layout(output, pack_root, pack_facts, identity)
     return {
         "layout": str(output),
-        "reference": OCI_REFERENCE,
+        "reference": f"{OCI_REPOSITORY}:v{pack_facts['pack_version']}",
         "manifest_digest": manifest_digest,
-        "content_id": PACK_CONTENT_ID,
+        "content_id": pack_facts["content_id"],
         "layer_count": len(layer_descriptors),
-        "created": SOURCE_CREATED,
-        "revision": AUTHORITY_COMMIT,
+        "created": identity["source_created"],
+        "revision": identity["source_commit"],
+        "source_identity": identity,
     }
 
 
-def read_layout_manifest(layout: Path) -> tuple[dict[str, Any], bytes, str]:
+def read_layout_manifest(layout: Path, expected_version: str | None = None) -> tuple[dict[str, Any], bytes, str]:
     try:
         layout_metadata = json.loads((layout / "oci-layout").read_text())
         index = json.loads((layout / "index.json").read_text())
@@ -112,7 +165,10 @@ def read_layout_manifest(layout: Path) -> tuple[dict[str, Any], bytes, str]:
     manifests = index.get("manifests")
     require(isinstance(manifests, list) and len(manifests) == 1, "OCI index must contain one candidate")
     descriptor = manifests[0]
-    require(descriptor.get("annotations", {}).get("org.opencontainers.image.ref.name") == f"v{PACK_VERSION}", "OCI index tag is not v1.0.0")
+    ref_name = descriptor.get("annotations", {}).get("org.opencontainers.image.ref.name")
+    require(isinstance(ref_name, str) and ref_name.startswith("v"), "OCI index tag is missing")
+    if expected_version is not None:
+        require(ref_name == f"v{expected_version}", "OCI index tag does not match pack version")
     digest = descriptor.get("digest")
     require(isinstance(digest, str) and digest.startswith("sha256:"), "OCI index descriptor lacks a sha256 digest")
     blob = layout / "blobs" / "sha256" / digest.split(":", 1)[1]
@@ -125,18 +181,24 @@ def read_layout_manifest(layout: Path) -> tuple[dict[str, Any], bytes, str]:
     return manifest, manifest_bytes, digest
 
 
-def verify_oci_layout(layout: Path) -> dict[str, Any]:
-    manifest, manifest_bytes, manifest_digest = read_layout_manifest(layout)
+def verify_oci_layout(
+    layout: Path,
+    pack_root: Path = PACK_ROOT,
+    pack_facts: dict[str, Any] | None = None,
+    source_identity: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    facts = pack_facts or validate_pack_tree(pack_root)
+    identity = source_identity or source_repository_identity()
+    validate_source_identity(identity, facts["pack_version"])
+    manifest, manifest_bytes, manifest_digest = read_layout_manifest(layout, facts["pack_version"])
     require(manifest.get("schemaVersion") == 2, "OCI manifest schema version is not 2")
     require(manifest.get("mediaType") == OCI_MANIFEST_MEDIA_TYPE, "OCI manifest media type changed")
     require(manifest.get("artifactType") == OCI_ARTIFACT_TYPE, "OCI artifact type changed")
     annotations = manifest.get("annotations")
     require(isinstance(annotations, dict), "OCI manifest annotations are missing")
-    require(annotations.get("org.opencontainers.image.created") == SOURCE_CREATED, "OCI timestamp is not source-derived")
-    require(annotations.get("org.opencontainers.image.revision") == AUTHORITY_COMMIT, "OCI revision is not pinned")
-    require(annotations.get("org.opencontainers.image.source") == SOURCE_URL, "OCI source annotation changed")
-    require(annotations.get("org.opencontainers.image.version") == PACK_VERSION, "OCI version annotation changed")
-    require(annotations.get("io.effigy.catalog.pack.content-id") == PACK_CONTENT_ID, "OCI content annotation changed")
+    expected_annotations = manifest_annotations(facts, identity)
+    for key, value in expected_annotations.items():
+        require(annotations.get(key) == value, f"OCI annotation changed: {key}")
 
     config = manifest.get("config")
     require(isinstance(config, dict), "OCI config descriptor is missing")
@@ -144,8 +206,9 @@ def verify_oci_layout(layout: Path) -> dict[str, Any]:
     require(config.get("digest") == sha256_digest(b"{}"), "OCI config is not the fixed empty config")
     require(config.get("size") == 2 and config.get("data") == "e30=", "OCI empty config bytes changed")
 
+    files, _ = collect_tree(pack_root)
     layers = manifest.get("layers")
-    require(isinstance(layers, list) and len(layers) == len(PACK_FILES), "OCI layer inventory count changed")
+    require(isinstance(layers, list) and len(layers) == len(files), "OCI layer inventory count changed")
     titles: list[str] = []
     for layer in layers:
         require(layer.get("mediaType") == OCI_FILE_LAYER_MEDIA_TYPE, "OCI pack layer media type changed")
@@ -154,15 +217,15 @@ def verify_oci_layout(layout: Path) -> dict[str, Any]:
         path = Path(title)
         require(not path.is_absolute() and ".." not in path.parts and path.as_posix() == title, f"unsafe OCI layer title: {title!r}")
         titles.append(title)
-        require(title in PACK_FILES, f"OCI layer is outside the pack inventory: {title}")
+        require(title in files, f"OCI layer is outside the pack inventory: {title}")
         digest = layer.get("digest")
         require(isinstance(digest, str) and digest.startswith("sha256:"), f"OCI layer lacks a digest: {title}")
         blob = layout / "blobs" / "sha256" / digest.split(":", 1)[1]
         data = blob.read_bytes()
         require(len(data) == layer.get("size"), f"OCI layer size differs for {title}")
         require(sha256_digest(data) == digest, f"OCI layer digest differs for {title}")
-        require(data == (PACK_ROOT / title).read_bytes(), f"OCI layer bytes differ for {title}")
-    require(titles == sorted(PACK_FILES), "OCI layer path order is not deterministic")
+        require(data == (pack_root / title).read_bytes(), f"OCI layer bytes differ for {title}")
+    require(titles == sorted(files), "OCI layer path order is not deterministic")
     require(len(set(titles)) == len(titles), "OCI layer paths are duplicated")
     return {"manifest_digest": manifest_digest, "manifest_bytes": len(manifest_bytes), "layer_count": len(layers)}
 
@@ -182,77 +245,39 @@ def tree_snapshot(root: Path) -> dict[str, bytes]:
     return {relative: (root / relative).read_bytes() for relative in files}
 
 
-def deterministic_oci_proof() -> dict[str, Any]:
+def deterministic_oci_proof(
+    source_identity: dict[str, str] | None = None,
+    pack_root: Path = PACK_ROOT,
+    run_oras: bool = True,
+) -> dict[str, Any]:
+    pack_facts = validate_pack_tree(pack_root)
+    identity = source_identity or source_repository_identity()
     with tempfile.TemporaryDirectory(prefix="effigy-catalog-pack-oci-") as temporary:
         temporary_root = Path(temporary)
         first = temporary_root / "first"
         second = temporary_root / "second"
-        first_report = build_oci_layout(first)
-        second_report = build_oci_layout(second)
+        first_report = build_oci_layout(first, pack_root, identity)
+        second_report = build_oci_layout(second, pack_root, identity)
         require(
             first_report["manifest_digest"] == second_report["manifest_digest"],
             "repeated OCI candidates produced different manifest digests",
         )
         require(tree_snapshot(first) == tree_snapshot(second), "repeated OCI candidates differ in layout bytes")
-        verify_oci_layout(first)
+        verify_oci_layout(first, pack_root, pack_facts, identity)
 
-        roundtrip = "native"
-        oras = shutil.which("oras")
-        if oras:
-            pulled = temporary_root / "oras-pulled"
-            result = run_command(
-                [oras, "pull", "--oci-layout", f"{first}:v{PACK_VERSION}", "--output", str(pulled), "--no-tty"],
-                check=False,
-            )
-            if result.returncode != 0:
-                fail(f"ORAS could not pull the local candidate: {decode_output(result.stderr)}")
-            require(tree_snapshot(pulled) == tree_snapshot(PACK_ROOT), "ORAS round-trip changed pack bytes")
-            roundtrip = "oras"
+        roundtrip = "skipped"
+        if run_oras:
+            roundtrip = "native"
+            oras = shutil.which("oras")
+            if oras:
+                pulled = temporary_root / "oras-pulled"
+                result = run_command(
+                    [oras, "pull", "--oci-layout", f"{first}:v{pack_facts['pack_version']}", "--output", str(pulled), "--no-tty"],
+                    check=False,
+                )
+                if result.returncode != 0:
+                    fail(f"ORAS could not pull the local candidate: {decode_output(result.stderr)}")
+                require(tree_snapshot(pulled) == tree_snapshot(pack_root), "ORAS round-trip changed pack bytes")
+                roundtrip = "oras"
         first_report["roundtrip"] = roundtrip
         return first_report
-
-
-def no_push_rehearsal() -> dict[str, Any]:
-    candidate = deterministic_oci_proof()
-    digest = candidate["manifest_digest"]
-    tag = OCI_REFERENCE
-
-    def reconcile(remote: dict[str, str], candidate_digest: str) -> str:
-        existing = remote.get(tag)
-        if existing is None:
-            remote[tag] = candidate_digest
-            return "absent-would-create"
-        if existing == candidate_digest:
-            return "same-digest-would-reuse"
-        raise CheckFailure(f"collision rejected: {existing} is already recorded for {tag}")
-
-    absent_remote: dict[str, str] = {}
-    absent_result = reconcile(absent_remote, digest)
-    require(absent_remote == {tag: digest}, "absent rehearsal did not record the candidate decision")
-
-    same_remote = {tag: digest}
-    same_before = dict(same_remote)
-    same_result = reconcile(same_remote, digest)
-    require(same_remote == same_before, "same-digest rehearsal changed remote state")
-
-    collision_digest = "sha256:" + "0" * 64
-    require(collision_digest != digest, "collision fixture unexpectedly matches candidate")
-    collision_remote = {tag: collision_digest}
-    collision_before = dict(collision_remote)
-    try:
-        reconcile(collision_remote, digest)
-    except CheckFailure as error:
-        require("collision rejected" in str(error), "collision rehearsal failed for the wrong reason")
-    require(collision_remote == collision_before, "collision rehearsal changed remote state")
-
-    return {
-        "reference": tag,
-        "candidate_digest": digest,
-        "network_access": False,
-        "push_attempted": False,
-        "scenarios": {
-            "absent": absent_result,
-            "same_digest": same_result,
-            "collision": "rejected-without-write",
-        },
-    }

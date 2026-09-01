@@ -2,13 +2,15 @@
 
 Card: `1104-build-catalog-pack-repository-foundation`
 
-## Imported source
+## Canonical ownership and one-time import
 
-The canonical release root is `pack/`. It contains 42 regular files: the 41
+`pack/` is the only editable catalog asset root in
+`inflatable-cookie/effigy-catalog-pack`. The pack has 42 regular files: the 41
 catalog files below plus `pack.toml`. Total pack bytes are 88,600; the source
 catalog is 88,436 bytes.
 
-Source authority:
+The explicit one-time import proof compares every byte with the pinned Effigy
+authority. It records:
 
 - Effigy commit: `055595340c2219d3d47296072f5818c524c341f0`
 - catalog tree object: `539471162c4976551ac720fdcffe6a1de33cef0f`
@@ -69,19 +71,36 @@ The Effigy-compatible pack content ID is:
 sha256:511d120f181505f8ecced7687b564c4663663eca8f6f68b2b562c9b676feb29e
 ```
 
-## Deterministic candidate
+Routine `validate`, `effigy test`, and `effigy qa` recompute pack facts and
+consume only the pinned support policy. They do not require the pack to remain
+byte-identical to the one-time import. `import-proof` is the explicit command
+for that historical equality claim.
 
-The local OCI candidate has 42 sorted raw-file layers and fixed source-derived
-metadata:
+## Deterministic source and OCI identity
+
+The source-only OCI candidate was built from pack repository commit
+`71657514a0722282e2681fb51f2808430c912ef0` at
+`2026-09-01T21:38:38Z`:
 
 - reference: `ghcr.io/inflatable-cookie/effigy-catalog-pack:v1.0.0`
-- manifest digest: `sha256:8969288f4251c69ca4054dc53362a4d167e0bd38739e8478eaf9970c3a882495`
-- created: `2026-09-01T20:53:27Z`
-- revision: `055595340c2219d3d47296072f5818c524c341f0`
+- manifest digest: `sha256:c3bb8bdf990af67af06a90c54a57ac8db2456199c9c42f908b0076b16450bceb`
+- 42 sorted raw-file layers
 - ORAS local pull round-trip: passed with ORAS `1.3.3+Homebrew`
 
 Two fresh local builds produced the same manifest digest and identical layout
-bytes.
+bytes. The Effigy import commit is not used as the OCI revision or timestamp.
+
+The no-push publication candidate adds the planned source identity:
+
+- source tag: `v1.0.0`
+- peeled/source commit: `71657514a0722282e2681fb51f2808430c912ef0`
+- planned tag object hash: `9a0a5838b7798b08dc3b43a158c0c251237461c7`
+- candidate digest: `sha256:f164ffcd9312521d70f514d4c7473bb36139225c1a3cbfc62517a98c2c5fc9e8`
+
+That tag object was hashed in memory only. No `v1.0.0` tag exists in the source
+repository. The protected manual workflow accepts an existing annotated tag
+and full peeled commit, then verifies the real tag object, peeled commit, and
+manifest version before rehearsal.
 
 ## Consumer smoke
 
@@ -95,25 +114,46 @@ checkout. With a temporary `HOME` and temporary repository it:
 - ejected a representative `workspace-rust-bun` plus `postgres` compose
   assembly without starting a container.
 
-## Publication rehearsal and workflow scope
+## Publication rehearsal and hosted controls
 
-The no-push rehearsal passed all three immutable-ref cases:
+The no-push rehearsal performed all four in-memory cases:
 
 - absent: candidate would create the ref;
-- same digest: candidate would reuse the ref without a write; and
-- collision: different digest rejected without changing state.
+- same digest: candidate would reuse the ref without a write;
+- changed source identity/content: rejected without changing state; and
+- changed annotated-tag identity: rejected without changing state.
 
-The workflow check passed for `validate.yml` and
-`publication-rehearsal.yml`: checkout actions are pinned by full SHA, both
-workflows use `contents: read`, and no package, attestation, tag, stable-channel,
-registry-push, or merge mutation is present.
+The live repository controls were read back from the GitHub API at
+`2026-09-01T22:14:13Z` and are normalized in
+[`hosted-controls.json`](hosted-controls.json):
+
+- Actions are enabled, use the selected-actions policy, require full-SHA
+  pinning, and allow only `actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1`.
+- `catalog-pack-publication-rehearsal` has one required reviewer, zero wait
+  minutes, self-review disabled, administrator bypass disabled, and no
+  deployment branch restriction.
+- Ruleset `22050144` is active for exactly `refs/tags/v*`, rejects `update` and
+  `deletion`, and has no bypass actors.
+- The repository workflow default remains read-only and cannot approve pull
+  request reviews.
+
+`workflow-check` fails closed if this evidence is absent or any of those live
+control facts are weakened. The validation workflow has no package, attestation,
+tag, registry-push, stable-channel, or merge mutation.
+
+## Validation
+
+- `python3 scripts/catalog_pack.py inventory` — pass
+- `python3 scripts/catalog_pack.py validate` — pass without source-byte proof
+- `python3 scripts/catalog_pack.py import-proof --effigy-root ../effigy` — pass
+- `python3 scripts/catalog_pack.py oci-layout` — pass
+- `python3 scripts/catalog_pack.py rehearse --effigy-root ../effigy --require-authority` — pass
+- `python3 scripts/catalog_pack.py portable-check` — isolated authority lookup fails closed
+- `effigy test --plan` — pass
+- `effigy validate` — pass
+- `effigy qa` — pass
+- `effigy doctor --json` — expected healthy repository
+- `git diff --check` — pass
 
 No source tag, package, registry object, attestation, stable-channel movement,
 or Effigy sibling checkout change was made by this card.
-
-## Validation commands
-
-- `effigy test` — pass
-- `effigy qa` — pass
-- `effigy doctor --json` — `ok: true`, 20 checks passed, no findings
-- `git diff --check` — pass

@@ -2,9 +2,10 @@
 """Network-free foundation checks for the Effigy catalog pack.
 
 The repository deliberately keeps the release input in one place: ``pack/``.
-This script checks that tree against the pinned Effigy authority, computes the
-same content identity as Effigy, builds a deterministic OCI layout, and
-simulates immutable publication decisions without contacting a registry.
+The repository checks its pack tree independently, consumes the pinned Effigy
+support policy, and exposes a separate one-time import proof. It also computes
+the pack content identity, builds a deterministic OCI layout, and simulates
+immutable publication decisions without contacting a registry.
 """
 
 from __future__ import annotations
@@ -125,18 +126,19 @@ ROOT = Path(__file__).resolve().parents[1]
 PACK_ROOT = ROOT / "pack"
 SOURCE_CATALOG_RELATIVE = Path("crates/effigy-catalog/catalog")
 SUPPORT_RELATIVE = Path("support/catalog-pack-update.toml")
+HOSTED_EVIDENCE_PATH = ROOT / "docs" / "evidence" / "hosted-controls.json"
 
-AUTHORITY_COMMIT = "055595340c2219d3d47296072f5818c524c341f0"
-AUTHORITY_TREE = "539471162c4976551ac720fdcffe6a1de33cef0f"
-SUPPORT_BLOB = "20d0194d52c0bbf46677f8d77ca96fb4505df50e"
+# These values identify the one-time import proof. They are deliberately not
+# the ongoing pack validator's source of truth.
+IMPORT_AUTHORITY_COMMIT = "055595340c2219d3d47296072f5818c524c341f0"
+IMPORT_AUTHORITY_TREE = "539471162c4976551ac720fdcffe6a1de33cef0f"
+IMPORT_SUPPORT_BLOB = "20d0194d52c0bbf46677f8d77ca96fb4505df50e"
 CURRENT_EFFIGY_RELEASE = "0.12.1"
-PACK_ID = "effigy-default-catalog"
-PACK_VERSION = "1.0.0"
-PACK_COMPATIBILITY = ">=0.12, <0.13"
-PACK_CONTENT_ID = "sha256:511d120f181505f8ecced7687b564c4663663eca8f6f68b2b562c9b676feb29e"
-SOURCE_CREATED = "2026-09-01T20:53:27Z"
+FOUNDATION_PACK_ID = "effigy-default-catalog"
+FOUNDATION_PACK_CONTENT_ID = "sha256:511d120f181505f8ecced7687b564c4663663eca8f6f68b2b562c9b676feb29e"
 SOURCE_URL = "https://github.com/inflatable-cookie/effigy-catalog-pack"
-OCI_REFERENCE = "ghcr.io/inflatable-cookie/effigy-catalog-pack:v1.0.0"
+OCI_REPOSITORY = "ghcr.io/inflatable-cookie/effigy-catalog-pack"
+CHECKOUT_ACTION_SHA = "3d3c42e5aac5ba805825da76410c181273ba90b1"
 
 OCI_LAYOUT_VERSION = "1.0.0"
 OCI_INDEX_MEDIA_TYPE = "application/vnd.oci.image.index.v1+json"

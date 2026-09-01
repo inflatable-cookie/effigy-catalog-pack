@@ -4,6 +4,12 @@ from __future__ import annotations
 
 from catalog_pack_constants import *
 
+
+SEMVER_PATTERN = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$")
+COMPATIBILITY_PATTERN = re.compile(
+    r"^>=\d+\.\d+(?:\.\d+)?,\s*<\d+\.\d+(?:\.\d+)?$"
+)
+
 class CheckFailure(RuntimeError):
     """A repository proof failed."""
 
@@ -124,42 +130,35 @@ def load_toml(path: Path) -> dict[str, Any]:
     return value
 
 
-def validate_pack_tree() -> dict[str, Any]:
-    files, directories = collect_tree(PACK_ROOT)
-    expected_files = sorted(PACK_FILES)
-    expected_directories = sorted(expected_directories_for_pack())
-    require(files == expected_files, describe_difference("pack files", files, expected_files))
-    require(
-        directories == expected_directories,
-        describe_difference("pack directories", directories, expected_directories),
-    )
+def validate_pack_tree(root: Path = PACK_ROOT) -> dict[str, Any]:
+    """Validate a pack's independent shape and return its computed identity."""
 
-    manifest = load_toml(PACK_ROOT / "pack.toml")
+    files, directories = collect_tree(root)
+    require("pack.toml" in files, "pack root must contain pack.toml")
+
+    manifest = load_toml(root / "pack.toml")
     require(manifest.get("schema_version") == 1, "pack.toml must declare schema_version = 1")
     identity = manifest.get("pack")
     compatibility = manifest.get("compatibility")
     require(isinstance(identity, dict), "pack.toml must contain [pack]")
     require(isinstance(compatibility, dict), "pack.toml must contain [compatibility]")
-    require(identity.get("id") == PACK_ID, f"pack id must be {PACK_ID}")
-    require(identity.get("version") == PACK_VERSION, f"pack version must be {PACK_VERSION}")
+    pack_id = identity.get("id")
+    pack_version = identity.get("version")
+    effigy_compatibility = compatibility.get("effigy")
+    require(pack_id == FOUNDATION_PACK_ID, f"pack id must be {FOUNDATION_PACK_ID}")
+    require(isinstance(pack_version, str) and SEMVER_PATTERN.fullmatch(pack_version), "pack version must be SemVer")
     require(
-        identity.get("description") == "Default Effigy service catalog",
-        "pack description does not match the foundation manifest",
+        isinstance(effigy_compatibility, str) and COMPATIBILITY_PATTERN.fullmatch(effigy_compatibility),
+        "pack compatibility must use a lower and upper Effigy release bound",
     )
-    require(
-        compatibility.get("effigy") == PACK_COMPATIBILITY,
-        f"pack compatibility must be {PACK_COMPATIBILITY!r}",
-    )
+    description = identity.get("description")
+    require(description is None or isinstance(description, str), "pack description must be a string when present")
     require("update" not in manifest, "pack.toml must not own update-channel authority")
 
-    service_names = sorted(
-        path.split("/", 1)[0]
-        for path in SOURCE_FILES
-        if "/" in path
-    )
-    service_names = sorted(set(service_names))
+    service_names = sorted(path for path in directories if "/" not in path)
+    require(service_names, "pack must contain at least one service fragment directory")
     for service_name in service_names:
-        service_root = PACK_ROOT / service_name
+        service_root = root / service_name
         service_manifest = load_toml(service_root / "service.toml")
         service_table = service_manifest.get("service")
         require(isinstance(service_table, dict), f"{service_name}/service.toml lacks [service]")
@@ -170,21 +169,16 @@ def validate_pack_tree() -> dict[str, Any]:
         compose = service_root / "compose.fragment.yml"
         require(compose.read_bytes(), f"{compose} must not be empty")
 
-    content_id = calculate_content_id(PACK_ROOT, files)
-    require(content_id == PACK_CONTENT_ID, f"pack content identity changed: {content_id}")
+    content_id = calculate_content_id(root, files)
     return {
-        "pack_id": PACK_ID,
-        "pack_version": PACK_VERSION,
+        "pack_id": pack_id,
+        "pack_version": pack_version,
         "manifest_schema_version": 1,
-        "effigy_compatibility": PACK_COMPATIBILITY,
+        "effigy_compatibility": effigy_compatibility,
         "file_count": len(files),
-        "byte_count": sum((PACK_ROOT / path).stat().st_size for path in files),
+        "byte_count": sum((root / path).stat().st_size for path in files),
         "content_id": content_id,
     }
-
-
-def expected_directories_for_pack() -> set[str]:
-    return expected_directories(PACK_FILES)
 
 
 def describe_difference(label: str, actual: list[str], expected: list[str]) -> str:
