@@ -10,6 +10,7 @@ minimum_effigy_version = "0.12.1"
 "pack:rehearse" = "python3 scripts/catalog_pack.py rehearse --require-authority"
 "pack:effigy" = "python3 scripts/catalog_pack.py effigy-smoke --require-authority"
 "pack:workflow-check" = "python3 scripts/catalog_pack.py workflow-check"
+"pack:provider-controls" = "python3 scripts/catalog_pack.py provider-controls"
 
 health = [
   { task = "pack:validate" },

@@ -1,8 +1,10 @@
 {
   "schema_version": 1,
+  "evidence_kind": "static-provider-snapshot",
   "repository": "inflatable-cookie/effigy-catalog-pack",
   "observed_at": "2026-09-01T22:25:38Z",
   "observed_head": "c935cefa5f6296cb7784d5c90ea393670de1fe2d",
+  "verification_command": "python3 scripts/catalog_pack.py provider-controls",
   "actions": {
     "enabled": true,
     "allowed_actions": "selected",
@@ -18,7 +20,7 @@
   "environment": {
     "name": "catalog-pack-publication-rehearsal",
     "wait_timer": 0,
-    "prevent_self_review": true,
+    "prevent_self_review": false,
     "can_admins_bypass": false,
     "required_reviewers": [
       {
@@ -42,14 +44,6 @@
     ],
     "bypass_actors": [],
     "current_user_can_bypass": "never"
-  },
-  "hosted_validation": {
-    "workflow": "Validate catalog pack",
-    "run_id": 33566182172,
-    "head": "c935cefa5f6296cb7784d5c90ea393670de1fe2d",
-    "event": "pull_request",
-    "conclusion": "success",
-    "url": "https://github.com/inflatable-cookie/effigy-catalog-pack/actions/runs/33566182172"
   },
   "api_observations": {
     "actions": "GET /repos/inflatable-cookie/effigy-catalog-pack/actions/permissions",

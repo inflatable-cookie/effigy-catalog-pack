@@ -14,6 +14,7 @@ from catalog_pack_effigy import effigy_smoke
 from catalog_pack_hosted import portable_authority_check, workflow_check
 from catalog_pack_oci import build_oci_layout, deterministic_oci_proof, prepare_layout_output
 from catalog_pack_publication import no_push_rehearsal
+from catalog_pack_provider import live_provider_check
 from catalog_pack_shared import (
     CheckFailure,
     PACK_ROOT,
@@ -75,6 +76,7 @@ def main(argv: list[str]) -> int:
             "oci-layout",
             "rehearse",
             "workflow-check",
+            "provider-controls",
             "portable-check",
             "effigy-smoke",
             "test",
@@ -104,6 +106,8 @@ def main(argv: list[str]) -> int:
             result = no_push_rehearsal(args.source_tag, args.source_ref)
         elif args.command == "workflow-check":
             result = workflow_check()
+        elif args.command == "provider-controls":
+            result = live_provider_check()
         elif args.command == "portable-check":
             result = portable_authority_check()
         elif args.command == "effigy-smoke":

@@ -46,12 +46,15 @@ jobs:
         run: python3 scripts/catalog_pack.py oci-layout
 
       - name: Rehearse absent, same-digest, and collision outcomes
+        env:
+          SOURCE_TAG: ${{ inputs.source_tag }}
+          SOURCE_REF: ${{ inputs.source_ref }}
         run: >-
           python3 scripts/catalog_pack.py rehearse
           --effigy-root .authority/effigy
           --require-authority
-          --source-tag "${{ inputs.source_tag }}"
-          --source-ref "${{ inputs.source_ref }}"
+          --source-tag "$SOURCE_TAG"
+          --source-ref "$SOURCE_REF"
 
       - name: Verify workflow permissions and pins
         run: python3 scripts/catalog_pack.py workflow-check

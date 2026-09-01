@@ -7,16 +7,21 @@ from catalog_pack_shared import *
 
 
 def hosted_control_check() -> dict[str, Any]:
-    """Require a normalized, live-captured repository-control evidence file."""
+    """Require a normalized static provider-control evidence snapshot."""
 
     try:
         evidence = json.loads(HOSTED_EVIDENCE_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
         fail(f"hosted control evidence is missing or invalid: {error}")
     require(evidence.get("schema_version") == 1, "hosted control evidence schema is not 1")
+    require(evidence.get("evidence_kind") == "static-provider-snapshot", "hosted control evidence is not marked static")
     require(evidence.get("repository") == "inflatable-cookie/effigy-catalog-pack", "hosted control evidence names the wrong repository")
     require(isinstance(evidence.get("observed_at"), str) and evidence["observed_at"], "hosted control evidence lacks an observation time")
     require(re.fullmatch(r"[0-9a-f]{40}", evidence.get("observed_head", "")) is not None, "hosted control evidence lacks a source head")
+    require(
+        evidence.get("verification_command") == "python3 scripts/catalog_pack.py provider-controls",
+        "hosted control evidence lacks the live verification command",
+    )
 
     actions = evidence.get("actions")
     require(isinstance(actions, dict), "hosted Actions control evidence is missing")
@@ -36,7 +41,7 @@ def hosted_control_check() -> dict[str, Any]:
     require(isinstance(environment, dict), "hosted environment evidence is missing")
     require(environment.get("name") == "catalog-pack-publication-rehearsal", "hosted environment has the wrong name")
     require(environment.get("wait_timer") == 0, "hosted environment wait timer changed")
-    require(environment.get("prevent_self_review") is True, "hosted environment permits self-review")
+    require(environment.get("prevent_self_review") is False, "hosted environment blocks the sole operator's self-review")
     require(environment.get("can_admins_bypass") is False, "hosted environment permits administrator bypass")
     reviewers = environment.get("required_reviewers")
     require(isinstance(reviewers, list) and reviewers, "hosted environment has no required reviewer")
@@ -50,27 +55,13 @@ def hosted_control_check() -> dict[str, Any]:
     require(ruleset.get("bypass_actors") == [], "tag ruleset has an unexpected bypass actor")
     require(ruleset.get("current_user_can_bypass") == "never", "current user can bypass the v* tag ruleset")
 
-    hosted_validation = evidence.get("hosted_validation")
-    require(isinstance(hosted_validation, dict), "hosted validation evidence is missing")
-    require(
-        isinstance(hosted_validation.get("run_id"), int) and hosted_validation["run_id"] > 0,
-        "hosted validation evidence lacks a run id",
-    )
-    require(
-        re.fullmatch(r"[0-9a-f]{40}", hosted_validation.get("head", "")) is not None,
-        "hosted validation evidence lacks a source head",
-    )
-    require(hosted_validation.get("event") == "pull_request", "hosted validation was not a pull-request run")
-    require(hosted_validation.get("conclusion") == "success", "hosted validation did not succeed")
-    require(
-        isinstance(hosted_validation.get("url"), str) and hosted_validation["url"].startswith("https://"),
-        "hosted validation URL is missing",
-    )
     return {
         "verified": True,
         "observed_at": evidence["observed_at"],
         "observed_head": evidence["observed_head"],
-        "hosted_validation_run": hosted_validation["run_id"],
+        "evidence_kind": "static-provider-snapshot",
+        "live_verification_required": True,
+        "hosted_validation_separate": True,
         "actions_enabled": True,
         "environment_protected": True,
         "version_tags_protected": True,
@@ -101,6 +92,35 @@ def workflow_check() -> dict[str, Any]:
         for action in uses_pattern.findall(contents):
             require(action_pattern.match(action), f"workflow action is not pinned by full SHA: {path.name}: {action}")
 
+    def run_blocks(contents: str) -> list[str]:
+        lines = contents.splitlines()
+        blocks: list[str] = []
+        for index, line in enumerate(lines):
+            match = re.match(r"^(?P<indent> *)run:\s*(?P<value>.*)$", line)
+            if match is None:
+                continue
+            indent = len(match.group("indent"))
+            block = [line]
+            if match.group("value").strip().startswith(("|", ">")):
+                following = index + 1
+                while following < len(lines):
+                    candidate = lines[following]
+                    candidate_indent = len(candidate) - len(candidate.lstrip(" "))
+                    if candidate.strip() or candidate_indent > indent:
+                        if candidate.strip() and candidate_indent <= indent:
+                            break
+                        block.append(candidate)
+                        following += 1
+                        continue
+                    block.append(candidate)
+                    following += 1
+            blocks.append("\n".join(block))
+        return blocks
+
+    def has_raw_input_in_run(contents: str) -> bool:
+        expression = re.compile(r"\$\{\{\s*inputs\.[A-Za-z_][A-Za-z0-9_]*\s*\}\}")
+        return any(expression.search(block) for block in run_blocks(contents))
+
     validation = (workflow_root / "validate.yml").read_text()
     rehearsal = (workflow_root / "publication-rehearsal.yml").read_text()
     require("pull_request:" in validation, "validate workflow must run for pull requests")
@@ -122,11 +142,24 @@ def workflow_check() -> dict[str, Any]:
         "--source-tag" in rehearsal and "--source-ref" in rehearsal,
         "publication rehearsal must pass source identity inputs",
     )
+    require("SOURCE_TAG: ${{ inputs.source_tag }}" in rehearsal, "publication rehearsal must bind source_tag through step env")
+    require("SOURCE_REF: ${{ inputs.source_ref }}" in rehearsal, "publication rehearsal must bind source_ref through step env")
+    require('--source-tag "$SOURCE_TAG"' in rehearsal, "publication rehearsal must quote the source_tag shell variable")
+    require('--source-ref "$SOURCE_REF"' in rehearsal, "publication rehearsal must quote the source_ref shell variable")
+    require(not has_raw_input_in_run(rehearsal), "publication rehearsal interpolates a workflow input directly in run")
+
+    injection_counterexample = """
+      - name: Input injection counterexample
+        run: >-
+          printf '%s\\n' "${{ inputs.source_tag }}"
+    """
+    require(has_raw_input_in_run(injection_counterexample), "workflow input injection counterexample missed the run guard")
     hosted = hosted_control_check()
     return {
         "workflow_files": sorted(expected),
         "actions_sha_pinned": True,
         "release_mutations": False,
+        "workflow_input_shell_guard": True,
         "hosted_controls": hosted,
     }
 
