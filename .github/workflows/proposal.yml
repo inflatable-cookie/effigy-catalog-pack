@@ -1,0 +1,185 @@
+name: Propose Effigy catalog baseline
+
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_digest:
+        description: Immutable published catalog-pack manifest digest (sha256:...)
+        required: true
+        type: string
+
+concurrency:
+  group: catalog-pack-baseline-proposal-${{ inputs.artifact_digest }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  propose:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the catalog-pack source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Install pinned ORAS
+        env:
+          ORAS_VERSION: "1.3.3"
+          ORAS_SHA256: "9ce999f8d2de03fc03968b29d743077a58783e545e5eaa53917ca177352d0e59"
+        run: |
+          curl -fsSL -o oras.tgz "https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/oras_${ORAS_VERSION}_linux_amd64.tar.gz"
+          echo "${ORAS_SHA256}  oras.tgz" | sha256sum -c -
+          tar -xzf oras.tgz oras
+          install -m 0755 oras /usr/local/bin/oras
+          rm -f oras.tgz oras
+          oras version
+
+      - name: Pull the requested artifact by immutable digest
+        env:
+          ARTIFACT_DIGEST: ${{ inputs.artifact_digest }}
+        run: |
+          set -eu
+          artifact_dir="$RUNNER_TEMP/catalog-pack-artifact"
+          mkdir -p "$artifact_dir"
+          oras manifest fetch --descriptor "ghcr.io/inflatable-cookie/effigy-catalog-pack@$ARTIFACT_DIGEST" > "$RUNNER_TEMP/catalog-pack-descriptor.json"
+          oras manifest fetch --format json "ghcr.io/inflatable-cookie/effigy-catalog-pack@$ARTIFACT_DIGEST" > "$RUNNER_TEMP/catalog-pack-manifest.json"
+          docker_config="$RUNNER_TEMP/catalog-pack-docker"
+          mkdir -p "$docker_config"
+          printf '%s\n' '{}' > "$docker_config/config.json"
+          DOCKER_CONFIG="$docker_config" oras pull "ghcr.io/inflatable-cookie/effigy-catalog-pack@$ARTIFACT_DIGEST" --output "$artifact_dir" --no-tty
+          python3 scripts/catalog_pack.py proposal-artifact-check \
+            --artifact-root "$artifact_dir" \
+            --artifact-manifest "$RUNNER_TEMP/catalog-pack-manifest.json" \
+            --artifact-descriptor "$RUNNER_TEMP/catalog-pack-descriptor.json" \
+            --artifact-digest "$ARTIFACT_DIGEST"
+
+      - name: Verify the digest-bound attestation
+        env:
+          ARTIFACT_DIGEST: ${{ inputs.artifact_digest }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh attestation verify \
+            "oci://ghcr.io/inflatable-cookie/effigy-catalog-pack@$ARTIFACT_DIGEST" \
+            --repo inflatable-cookie/effigy-catalog-pack \
+            --predicate-type https://slsa.dev/provenance/v1 \
+            --format json > "$RUNNER_TEMP/catalog-pack-attestation.json"
+          python3 scripts/catalog_pack.py proposal-attestation \
+            --output "$RUNNER_TEMP/catalog-pack-attestation.json" \
+            --artifact-digest "$ARTIFACT_DIGEST"
+
+      - name: Write the GitHub App key for this run
+        env:
+          APP_PRIVATE_KEY: ${{ secrets.CATALOG_PACK_EFFIGY_APP_PRIVATE_KEY }}
+        run: |
+          test -n "$APP_PRIVATE_KEY"
+          umask 077
+          printf '%s\n' "$APP_PRIVATE_KEY" > "$RUNNER_TEMP/catalog-pack-effigy-app.pem"
+
+      - name: Mint a narrow short-lived Effigy installation token
+        id: app-token
+        env:
+          APP_ID: ${{ secrets.CATALOG_PACK_EFFIGY_APP_ID }}
+          INSTALLATION_ID: ${{ secrets.CATALOG_PACK_EFFIGY_INSTALLATION_ID }}
+          PRIVATE_KEY_FILE: ${{ runner.temp }}/catalog-pack-effigy-app.pem
+        run: >-
+          python3 scripts/catalog_pack.py proposal-token
+          --app-id "$APP_ID"
+          --installation-id "$INSTALLATION_ID"
+          --private-key-file "$PRIVATE_KEY_FILE"
+
+      - name: Check out current Effigy main with the installation token
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: inflatable-cookie/effigy
+          ref: main
+          path: .proposal/effigy
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 1
+          persist-credentials: true
+
+      - name: Generate the candidate snapshot, lock, and evidence
+        env:
+          ARTIFACT_DIGEST: ${{ inputs.artifact_digest }}
+          ARTIFACT_ROOT: ${{ runner.temp }}/catalog-pack-artifact
+          ARTIFACT_MANIFEST: ${{ runner.temp }}/catalog-pack-manifest.json
+          ARTIFACT_DESCRIPTOR: ${{ runner.temp }}/catalog-pack-descriptor.json
+          EFFIGY_ROOT: .proposal/effigy
+        run: >-
+          python3 scripts/catalog_pack.py proposal-prepare
+          --effigy-root "$EFFIGY_ROOT"
+          --artifact-root "$ARTIFACT_ROOT"
+          --artifact-manifest "$ARTIFACT_MANIFEST"
+          --artifact-descriptor "$ARTIFACT_DESCRIPTOR"
+          --artifact-digest "$ARTIFACT_DIGEST"
+
+      - name: Run Effigy's committed offline baseline verifier and diff policy
+        env:
+          ARTIFACT_DIGEST: ${{ inputs.artifact_digest }}
+          ARTIFACT_ROOT: ${{ runner.temp }}/catalog-pack-artifact
+          ARTIFACT_MANIFEST: ${{ runner.temp }}/catalog-pack-manifest.json
+          ARTIFACT_DESCRIPTOR: ${{ runner.temp }}/catalog-pack-descriptor.json
+          EFFIGY_ROOT: .proposal/effigy
+        run: >-
+          python3 scripts/catalog_pack.py proposal-verify
+          --effigy-root "$EFFIGY_ROOT"
+          --artifact-root "$ARTIFACT_ROOT"
+          --artifact-manifest "$ARTIFACT_MANIFEST"
+          --artifact-descriptor "$ARTIFACT_DESCRIPTOR"
+          --artifact-digest "$ARTIFACT_DIGEST"
+
+      - name: Stage and recheck the exact generated-only diff
+        env:
+          ARTIFACT_DIGEST: ${{ inputs.artifact_digest }}
+          ARTIFACT_ROOT: ${{ runner.temp }}/catalog-pack-artifact
+          ARTIFACT_MANIFEST: ${{ runner.temp }}/catalog-pack-manifest.json
+          ARTIFACT_DESCRIPTOR: ${{ runner.temp }}/catalog-pack-descriptor.json
+          EFFIGY_ROOT: .proposal/effigy
+        run: |
+          git -C "$EFFIGY_ROOT" add --all -- crates/effigy-catalog/catalog crates/effigy-catalog/catalog-pack.lock.toml docs/logs
+          python3 scripts/catalog_pack.py proposal-verify \
+            --effigy-root "$EFFIGY_ROOT" \
+            --artifact-root "$ARTIFACT_ROOT" \
+            --artifact-manifest "$ARTIFACT_MANIFEST" \
+            --artifact-descriptor "$ARTIFACT_DESCRIPTOR" \
+            --artifact-digest "$ARTIFACT_DIGEST" \
+            --skip-effigy-verifier
+          git -C "$EFFIGY_ROOT" diff --cached --check
+
+      - name: Render the deterministic pull-request body
+        env:
+          ARTIFACT_DIGEST: ${{ inputs.artifact_digest }}
+          ARTIFACT_ROOT: ${{ runner.temp }}/catalog-pack-artifact
+          ARTIFACT_MANIFEST: ${{ runner.temp }}/catalog-pack-manifest.json
+          ARTIFACT_DESCRIPTOR: ${{ runner.temp }}/catalog-pack-descriptor.json
+        run: >-
+          python3 scripts/catalog_pack.py proposal-body
+          --artifact-root "$ARTIFACT_ROOT"
+          --artifact-manifest "$ARTIFACT_MANIFEST"
+          --artifact-descriptor "$ARTIFACT_DESCRIPTOR"
+          --artifact-digest "$ARTIFACT_DIGEST"
+          --output "$RUNNER_TEMP/catalog-pack-pr-body.md"
+
+      - name: Create the review branch and pull request
+        env:
+          ARTIFACT_DIGEST: ${{ inputs.artifact_digest }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          EFFIGY_ROOT: .proposal/effigy
+        run: |
+          set -eu
+          branch="catalog-pack/baseline-${ARTIFACT_DIGEST#sha256:}"
+          git -C "$EFFIGY_ROOT" switch --create "$branch"
+          git -C "$EFFIGY_ROOT" config user.name "catalog-pack proposal bot"
+          git -C "$EFFIGY_ROOT" config user.email "catalog-pack-proposal@users.noreply.github.com"
+          git -C "$EFFIGY_ROOT" commit -m "propose generated catalog baseline"
+          git -C "$EFFIGY_ROOT" push --set-upstream origin "$branch"
+          gh pr create \
+            --repo inflatable-cookie/effigy \
+            --base main \
+            --head "$branch" \
+            --title "Propose catalog-pack baseline $ARTIFACT_DIGEST" \
+            --body-file "$RUNNER_TEMP/catalog-pack-pr-body.md"
