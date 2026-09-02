@@ -43,6 +43,41 @@ def classify_inspect_proof() -> dict[str, Any]:
         "ORAS reference descriptor miss was not classified absent",
     )
     require(
+        classify_registry_inspect(
+            1,
+            "",
+            "Error response from registry: failed to find "
+            '"ghcr.io/inflatable-cookie/effigy-catalog-pack:v1.0.0": '
+            "ghcr.io/inflatable-cookie/effigy-catalog-pack:v1.0.0: not found",
+        )
+        == "absent",
+        "live ORAS 1.3.3 GHCR miss from run 33622687650 was not classified absent",
+    )
+    require(
+        classify_registry_inspect(
+            1,
+            "",
+            "Error response from registry: failed to find "
+            '"ghcr.io/inflatable-cookie/effigy-catalog-pack:v1.0.1": '
+            "ghcr.io/inflatable-cookie/effigy-catalog-pack:v1.0.1: not found",
+        )
+        == "absent",
+        "current-version ORAS GHCR miss was not classified absent",
+    )
+    require(
+        classify_registry_inspect(1, "", "Error: not found") == "error",
+        "generic bare not-found was treated as registry absence",
+    )
+    require(
+        classify_registry_inspect(
+            1,
+            "",
+            "failed to find ghcr.io/inflatable-cookie/effigy-catalog-pack:v1.0.1: not found",
+        )
+        == "error",
+        "unquoted failed-to-find phrasing was treated as registry absence",
+    )
+    require(
         classify_registry_inspect(1, "", "Error: manifest unknown") == "absent",
         "manifest unknown was not classified absent",
     )

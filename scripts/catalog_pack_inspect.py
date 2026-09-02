@@ -29,6 +29,7 @@ _REGISTRY_ABSENT_MARKERS = (
 _AUTH_STATUS = re.compile(r"\b(401|403)\b")
 _ABSENT_STATUS = re.compile(r"\b404\b")
 _ORAS_DESCRIPTOR_ABSENT = re.compile(r"failed to fetch descriptor:.*\bnot found\b")
+_ORAS_FIND_ABSENT = re.compile(r'failed to find "[^"]+":.*\bnot found\b')
 _DIGEST_PARTS = re.compile(r"^([a-z0-9]+):([0-9a-f]+)$")
 
 
@@ -45,6 +46,8 @@ def classify_registry_inspect(returncode: int, stdout: str, stderr: str) -> str:
     if any(marker in text for marker in _REGISTRY_ABSENT_MARKERS) or _ABSENT_STATUS.search(text):
         return "absent"
     if _ORAS_DESCRIPTOR_ABSENT.search(text):
+        return "absent"
+    if _ORAS_FIND_ABSENT.search(text):
         return "absent"
     return "error"
 
