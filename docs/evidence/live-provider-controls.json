@@ -1,11 +1,17 @@
 {
-  "evidence_kind": "live-provider-observation",
-  "mode": "live-read-only",
-  "repository": "inflatable-cookie/effigy-catalog-pack",
-  "observed_at": "2026-09-01T22:40:37Z",
-  "observed_head": "9e3cc01b360a700647fd4f972ec905fbb1e61ad9",
-  "read_only": true,
-  "write_methods_used": [],
+  "actions": {
+    "allowed_actions": "selected",
+    "enabled": true,
+    "selected_actions": {
+      "github_owned_allowed": false,
+      "patterns_allowed": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6"
+      ],
+      "verified_allowed": false
+    },
+    "sha_pinning_required": true
+  },
   "api_calls": {
     "actions": "GET /repos/inflatable-cookie/effigy-catalog-pack/actions/permissions",
     "environment": "GET /repos/inflatable-cookie/effigy-catalog-pack/environments/catalog-pack-publication-rehearsal",
@@ -13,46 +19,37 @@
     "tag_ruleset": "GET /repos/inflatable-cookie/effigy-catalog-pack/rulesets/22050144",
     "workflow_permissions": "GET /repos/inflatable-cookie/effigy-catalog-pack/actions/permissions/workflow"
   },
+  "environment": {
+    "can_admins_bypass": false,
+    "deployment_branch_policy": null,
+    "id": 21041670008,
+    "name": "catalog-pack-publication-rehearsal",
+    "prevent_self_review": false,
+    "required_reviewers": [
+      {
+        "id": 1273586,
+        "login": "betterthanclay",
+        "type": "User"
+      }
+    ],
+    "wait_timer": 0
+  },
+  "evidence_kind": "live-provider-observation",
+  "mode": "live-read-only",
+  "observed_at": "2026-09-02T11:36:33Z",
+  "observed_head": "9588750f5ed06b1191e768fe55d8f81af8df2a8f",
+  "read_only": true,
+  "repository": "inflatable-cookie/effigy-catalog-pack",
   "static_snapshot": {
     "path": "docs/evidence/hosted-controls.json",
     "used_for_live_comparison": false
   },
-  "actions": {
-    "enabled": true,
-    "allowed_actions": "selected",
-    "sha_pinning_required": true,
-    "selected_actions": {
-      "github_owned_allowed": false,
-      "patterns_allowed": [
-        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
-      ],
-      "verified_allowed": false
-    }
-  },
-  "workflow_permissions": {
-    "default_workflow_permissions": "read",
-    "can_approve_pull_request_reviews": false
-  },
-  "environment": {
-    "id": 21041670008,
-    "name": "catalog-pack-publication-rehearsal",
-    "wait_timer": 0,
-    "prevent_self_review": false,
-    "can_admins_bypass": false,
-    "required_reviewers": [
-      {
-        "type": "User",
-        "login": "betterthanclay",
-        "id": 1273586
-      }
-    ],
-    "deployment_branch_policy": null
-  },
   "tag_ruleset": {
+    "bypass_actors": [],
+    "current_user_can_bypass": "never",
+    "enforcement": "active",
     "id": 22050144,
     "name": "Protect v* catalog-pack release tags",
-    "target": "tag",
-    "enforcement": "active",
     "ref_name_include": [
       "refs/tags/v*"
     ],
@@ -60,8 +57,12 @@
       "deletion",
       "update"
     ],
-    "bypass_actors": [],
-    "current_user_can_bypass": "never"
+    "target": "tag"
   },
-  "verified": true
+  "verified": true,
+  "workflow_permissions": {
+    "can_approve_pull_request_reviews": false,
+    "default_workflow_permissions": "read"
+  },
+  "write_methods_used": []
 }
