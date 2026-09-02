@@ -9,15 +9,15 @@ current default-branch commit and blob.
 
 ## Foundation facts
 
-- pack: `effigy-default-catalog` `1.0.0`
+- pack: `effigy-default-catalog` `1.0.1`
 - compatibility: `>=0.12, <0.13`
 - pack source repository: `inflatable-cookie/effigy-catalog-pack`
 - one-time Effigy import commit: `055595340c2219d3d47296072f5818c524c341f0`
 - one-time Effigy catalog tree: `539471162c4976551ac720fdcffe6a1de33cef0f`
 - import-era support Git blob OID: `20d0194d52c0bbf46677f8d77ca96fb4505df50e`
-- pack content ID: `sha256:511d120f181505f8ecced7687b564c4663663eca8f6f68b2b562c9b676feb29e`
+- pack content ID: `sha256:9498d33f1eccbb91e971b55f5169830baca26326a8f802408a0432e733254974`
 
-The source repository commit, commit timestamp, annotated `v1.0.0` tag object,
+The source repository commit, commit timestamp, annotated `v1.0.1` tag object,
 and peeled commit are the OCI provenance inputs. Ordinary QA models that
 identity without creating the tag or contacting a registry.
 

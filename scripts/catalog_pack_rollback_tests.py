@@ -27,7 +27,7 @@ def retag_and_drift_proof(created: dict[str, Any], run_phase: Callable[..., dict
         "retag rollback was not candidate then previous then candidate",
     )
     require(retag.inspect_stable() == digest, "retag rollback did not restore the candidate")
-    require(retag.inspect_version("v1.0.0") == digest, "retag rollback moved the version pointer")
+    require(retag.inspect_version("v1.0.1") == digest, "retag rollback moved the version pointer")
 
     class DriftingVersion(FakeRegistry):
         def __init__(self, **kwargs: Any) -> None:
@@ -110,7 +110,7 @@ def retag_and_drift_proof(created: dict[str, Any], run_phase: Callable[..., dict
     else:
         fail("failed candidate restore was accepted")
     require(restore_fail.inspect_stable() == previous, "failed restore did not remain on the previous digest")
-    require(restore_fail.inspect_version("v1.0.0") == digest, "failed restore changed the version pointer")
+    require(restore_fail.inspect_version("v1.0.1") == digest, "failed restore changed the version pointer")
     return {
         "retag_candidate_previous_candidate": True,
         "version_drift_before_stable": True,

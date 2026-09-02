@@ -156,7 +156,7 @@ def workflow_check() -> dict[str, Any]:
     require("push-to-registry:" in jobs_section, "finalize must push attestation to the registry")
     require("catalog-pack-publication-rehearsal" in publication, "publication must name its protected environment")
     require("group: catalog-pack-publication-${{ inputs.source_tag }}" in publication, "publication must serialize by source tag")
-    require("not refs/tags/v1.0.0" in publication, "publication must reject the refs/tags source-tag alias")
+    require("not refs/tags/v1.0.1" in publication, "publication must reject the refs/tags source-tag alias")
     require("cancel-in-progress: false" in publication, "publication must not cancel an in-progress version")
     require("GITHUB_TOKEN: ${{ github.token }}" in publication, "publication must export github.token as GITHUB_TOKEN")
     require("GH_TOKEN: ${{ github.token }}" in publication, "publication must export github.token as GH_TOKEN")

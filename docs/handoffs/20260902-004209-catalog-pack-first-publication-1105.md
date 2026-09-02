@@ -14,6 +14,32 @@ base_required: pushed-main
 tags: [coordination, handoff, worker, pr, publication]
 ---
 
+## Recovery Amendment (2026-09-02)
+
+The first protected run `33622687650` failed on its first GHCR descriptor
+read, before any package write, because live ORAS `1.3.3` reports an absent
+descriptor as `failed to find "<ref>": <ref>: not found`, a shape the
+network-free oracle did not model. Package, attestation, and `stable` remain
+absent.
+
+The annotated `v1.0.0` source tag (tag object
+`f2b59e65b1938600907de8dea566ad957e63be69`, peeled commit
+`f70637abe1024cf7b54cabe58c3bd5877dcf8eca`) is preserved immutable as
+incident evidence. Never move, delete, recreate, or dispatch against it; no
+OCI `v1.0.0` package version may be invented.
+
+The operator authorized the `v1.0.1` recovery: land one bounded repair PR
+with the exact live-stderr classifier fixture and narrow absence
+classification, the selected-actions live-oracle reconciliation for the
+already-authorized attest pin, the pack and identity bump to `1.0.1` /
+`v1.0.1`, immutable incident evidence, and this authority reconciliation.
+Then stop for orchestrator review and merge. Only from that reviewed repair
+head may the same worker create annotated `v1.0.1` and dispatch the protected
+transaction, followed by the operator visibility checkpoint, protected
+finalization, and the evidence PR. Every phase-two instruction below that
+names `v1.0.0` now reads `v1.0.1` from the reviewed repair head. No second
+live attempt occurs before that merge.
+
 ## What This Thread Was Doing
 
 Effigy card `1105` is the first official catalog-pack publication. Foundation

@@ -12,9 +12,15 @@ snapshot.
 - Never publish, tag, create or change package visibility, move `stable`, or
   perform a release mutation without an explicit operator gate named by the
   active handoff.
-- Card `1105` has explicit authority for the annotated `v1.0.0` source tag,
-  public GHCR package, digest-bound attestation, and `stable` movement only.
-  Its implementation PR must be reviewed and merged before those mutations.
+- The failed pre-push `v1.0.0` publication attempt is preserved immutable as
+  incident evidence: annotated tag object
+  `f2b59e65b1938600907de8dea566ad957e63be69` peeling to
+  `f70637abe1024cf7b54cabe58c3bd5877dcf8eca`. Never move, delete, recreate,
+  or dispatch against it; no OCI `v1.0.0` package version may be invented.
+- Card `1105` recovery authority covers the annotated `v1.0.1` source tag
+  created only from a reviewed repair head, the public GHCR package,
+  digest-bound attestation, and `stable` movement only. The repair PR must be
+  reviewed and merged before those mutations.
 - `.github/workflows/` edits are authorized for card `1105` only within the
   protected first-publication transaction and its read-only validation path.
 - Keep ordinary validation network-free. Card `1105` may use its protected
