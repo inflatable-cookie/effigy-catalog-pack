@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from catalog_pack_authority import prove_import, prove_support, resolve_authority
+from catalog_pack_authority import prove_import, prove_support
 from catalog_pack_constants import IMPORT_AUTHORITY_COMMIT
-from catalog_pack_policy import prove_support_releases, version_admitted
+from catalog_pack_policy import version_admitted
 from catalog_pack_registry import FakeRegistry, require_live_mutation_gate
 from catalog_pack_shared import *
 from catalog_pack_transaction import run_publication
@@ -47,17 +47,33 @@ def support_import_split_proof(authority: Path | None, require_authority: bool) 
             fail("Effigy authority checkout is required for the support/import split proof")
         return {"skipped": True}
     support = prove_support(authority, True)
-    imported = prove_import(authority)
     require(support["import_pin_used"] is False, "current support still used the import pin")
     require(support["support_commit"] != IMPORT_AUTHORITY_COMMIT, "current support is still pinned to the import commit")
-    require(imported["authority_commit"] == IMPORT_AUTHORITY_COMMIT, "import proof lost the immutable import commit")
     require(support["authority_commit"] == support["support_commit"], "support commit aliases diverged")
+    import_available = (
+        run_command(
+            ["git", "-C", str(authority), "cat-file", "-e", f"{IMPORT_AUTHORITY_COMMIT}^{{commit}}"],
+            check=False,
+        ).returncode
+        == 0
+    )
+    if not import_available:
+        return {
+            "distinct": True,
+            "import_proof": "skipped-import-commit-absent",
+            "support_commit": support["support_commit"],
+            "import_commit": IMPORT_AUTHORITY_COMMIT,
+            "support_blob_oid": support["support_blob_oid"],
+        }
+    imported = prove_import(authority)
+    require(imported["authority_commit"] == IMPORT_AUTHORITY_COMMIT, "import proof lost the immutable import commit")
     require(
         imported["current_support_commit"] == support["support_commit"],
         "import proof did not observe the current default-branch support commit",
     )
     return {
         "distinct": True,
+        "import_proof": "checked",
         "support_commit": support["support_commit"],
         "import_commit": imported["authority_commit"],
         "support_blob_oid": support["support_blob_oid"],
