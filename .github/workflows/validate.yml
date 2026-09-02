@@ -43,5 +43,8 @@ jobs:
       - name: Prove publication ordering without mutation
         run: python3 scripts/catalog_pack.py publication-check --effigy-root .authority/effigy --require-authority
 
+      - name: Prove generated-baseline proposal policy without mutation
+        run: python3 scripts/catalog_pack.py proposal-check
+
       - name: Check workflow scope and action pins
         run: python3 scripts/catalog_pack.py workflow-check

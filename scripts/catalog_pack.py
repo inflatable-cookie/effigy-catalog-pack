@@ -17,6 +17,17 @@ from catalog_pack_policy import prove_support_releases
 from catalog_pack_publication import no_push_rehearsal
 from catalog_pack_publication_tests import publication_check
 from catalog_pack_provider import live_provider_check
+from catalog_pack_proposal import (
+    mint_installation_token,
+    proposal_attestation_check,
+    proposal_body,
+    proposal_branch,
+    proposal_evidence_path,
+    proposal_model_check,
+    materialize_candidate,
+    verify_pulled_artifact,
+    verify_proposal,
+)
 from catalog_pack_registry import FakeRegistry
 from catalog_pack_shared import (
     CheckFailure,
@@ -47,6 +58,7 @@ def test_command(args: argparse.Namespace) -> dict[str, Any]:
     portable = portable_authority_check()
     authority = resolve_authority(args.effigy_root)
     publication = publication_check(authority, True)
+    proposal = proposal_model_check()
     smoke = effigy_smoke(authority, args.effigy_bin)
     return {
         "validation": validation,
@@ -55,6 +67,7 @@ def test_command(args: argparse.Namespace) -> dict[str, Any]:
         "workflows": workflows,
         "portable": portable,
         "publication": publication,
+        "proposal": proposal,
         "effigy": smoke,
     }
 
@@ -76,6 +89,30 @@ def support_releases_command(args: argparse.Namespace) -> dict[str, Any]:
     authority = resolve_authority(args.effigy_root)
     support = prove_support(authority, True)
     return {"support": support, "releases": prove_support_releases(support)}
+
+
+def proposal_artifact_args(args: argparse.Namespace) -> dict[str, Any]:
+    require(args.artifact_root is not None, "proposal artifact root is required")
+    require(args.artifact_manifest is not None, "proposal artifact manifest is required")
+    require(args.artifact_descriptor is not None, "proposal artifact descriptor is required")
+    require(args.artifact_digest is not None, "proposal artifact digest is required")
+    return {
+        "artifact_root": Path(args.artifact_root),
+        "manifest_path": Path(args.artifact_manifest),
+        "artifact_digest": args.artifact_digest,
+        "descriptor_path": Path(args.artifact_descriptor),
+    }
+
+
+def proposal_body_command(args: argparse.Namespace) -> dict[str, Any]:
+    artifact_args = proposal_artifact_args(args)
+    artifact = verify_pulled_artifact(**artifact_args)
+    artifact["evidence_path"] = proposal_evidence_path(artifact["source_identity"]["source_created"]).as_posix()
+    body = proposal_body(artifact)
+    require(args.output is not None, "proposal body output is required")
+    output = Path(args.output)
+    output.write_text(body, encoding="utf-8")
+    return {"output": str(output), "bytes": len(body.encode("utf-8")), "network_access": False}
 
 
 def publish_command(args: argparse.Namespace) -> dict[str, Any]:
@@ -115,6 +152,14 @@ def main(argv: list[str]) -> int:
             "portable-check",
             "support-releases",
             "publication-check",
+            "proposal-check",
+            "proposal-artifact-check",
+            "proposal-prepare",
+            "proposal-verify",
+            "proposal-attestation",
+            "proposal-token",
+            "proposal-branch",
+            "proposal-body",
             "publish",
             "effigy-smoke",
             "test",
@@ -126,6 +171,15 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--source-tag", help="existing annotated source tag for publication")
     parser.add_argument("--source-ref", help="full peeled pack commit for publication")
     parser.add_argument("--output", help="OCI layout destination for oci-layout")
+    parser.add_argument("--artifact-root", help="pulled artifact pack root for proposal checks")
+    parser.add_argument("--artifact-manifest", help="JSON manifest fetched for the artifact digest")
+    parser.add_argument("--artifact-descriptor", help="JSON registry descriptor for the artifact digest")
+    parser.add_argument("--artifact-digest", help="immutable sha256 artifact digest")
+    parser.add_argument("--app-id", help="GitHub App id for the hosted proposal token")
+    parser.add_argument("--installation-id", help="GitHub App installation id for the hosted proposal token")
+    parser.add_argument("--private-key-file", help="GitHub App private key file for the hosted proposal token")
+    parser.add_argument("--offline", action="store_true", help="run the Effigy verifier with Cargo offline")
+    parser.add_argument("--skip-effigy-verifier", action="store_true", help="skip only the model-only Effigy verifier seam")
     parser.add_argument("--mutate", action="store_true", help="perform live publication writes (protected job only)")
     parser.add_argument(
         "--phase",
@@ -158,6 +212,40 @@ def main(argv: list[str]) -> int:
             result = support_releases_command(args)
         elif args.command == "publication-check":
             result = publication_check(resolve_authority(args.effigy_root), args.require_authority)
+        elif args.command == "proposal-check":
+            result = proposal_model_check()
+        elif args.command == "proposal-artifact-check":
+            result = verify_pulled_artifact(**proposal_artifact_args(args))
+        elif args.command == "proposal-prepare":
+            require(args.effigy_root is not None, "proposal Effigy checkout is required")
+            result = materialize_candidate(Path(args.effigy_root), **proposal_artifact_args(args))
+        elif args.command == "proposal-verify":
+            require(args.effigy_root is not None, "proposal Effigy checkout is required")
+            artifact_args = proposal_artifact_args(args)
+            result = verify_proposal(
+                Path(args.effigy_root),
+                **artifact_args,
+                run_verifier=not args.skip_effigy_verifier,
+                offline=args.offline,
+            )
+        elif args.command == "proposal-attestation":
+            require(args.output is not None, "attestation output is required")
+            require(args.artifact_digest is not None, "proposal artifact digest is required")
+            result = proposal_attestation_check(Path(args.output), args.artifact_digest)
+        elif args.command == "proposal-token":
+            require(args.app_id is not None, "GitHub App id is required")
+            require(args.installation_id is not None, "GitHub App installation id is required")
+            require(args.private_key_file is not None, "GitHub App private key file is required")
+            result = mint_installation_token(
+                args.app_id,
+                args.installation_id,
+                Path(args.private_key_file),
+            )
+        elif args.command == "proposal-branch":
+            require(args.artifact_digest is not None, "proposal artifact digest is required")
+            result = {"branch": proposal_branch(args.artifact_digest), "network_access": False}
+        elif args.command == "proposal-body":
+            result = proposal_body_command(args)
         elif args.command == "publish":
             result = publish_command(args)
         elif args.command == "effigy-smoke":

@@ -70,7 +70,7 @@ def hosted_control_check() -> dict[str, Any]:
 
 def workflow_check() -> dict[str, Any]:
     workflow_root = ROOT / ".github" / "workflows"
-    expected = {"validate.yml", "publication.yml"}
+    expected = {"validate.yml", "publication.yml", "proposal.yml"}
     require(workflow_root.is_dir(), "workflow directory is missing")
     actual = {path.name for path in workflow_root.iterdir() if path.is_file()}
     require(actual == expected, f"workflow inventory is {sorted(actual)}, expected {sorted(expected)}")
@@ -92,6 +92,7 @@ def workflow_check() -> dict[str, Any]:
             f"actions/checkout@{CHECKOUT_ACTION_SHA}",
             f"actions/attest@{ATTEST_ACTION_COMMIT}",
         },
+        "proposal.yml": {f"actions/checkout@{CHECKOUT_ACTION_SHA}"},
     }
     uses_pattern = re.compile(r"^\s*-?\s*uses:\s*([^\s#]+)", re.MULTILINE)
     action_pattern = re.compile(r"^[^@]+@([0-9a-f]{40})$")
@@ -140,6 +141,7 @@ def workflow_check() -> dict[str, Any]:
 
     validation = (workflow_root / "validate.yml").read_text()
     publication = (workflow_root / "publication.yml").read_text()
+    proposal = (workflow_root / "proposal.yml").read_text()
     require(not validate_forbidden.search(validation), "validate workflow contains a release mutation or write permission")
     require(not publication_forbidden.search(publication), "publication workflow contains a forbidden mutation")
     require("pull_request:" in validation, "validate workflow must run for pull requests")
@@ -198,6 +200,37 @@ def workflow_check() -> dict[str, Any]:
     require('--source-ref "$SOURCE_REF"' in publication, "publication must quote the source_ref shell variable")
     require_no_raw_input_in_run(publication)
 
+    proposal_forbidden = re.compile(
+        r"(?:gh\s+pr\s+(?:merge|review)|gh\s+release|release\s+(?:prepare|execute)|"
+        r"--approve|--merge|packages\s*:\s*write|id-token\s*:\s*write|"
+        r"attestations\s*:\s*write|actions/attest|oras\s+(?:cp|push)|"
+        r"CATALOG_PACK_PUBLICATION_MUTATE)",
+        re.IGNORECASE,
+    )
+    require("workflow_dispatch:" in proposal, "proposal workflow must be manual")
+    proposal_on, _, proposal_jobs = proposal.partition("jobs:")
+    require("pull_request:" not in proposal_on, "proposal must not run on pull_request")
+    require(re.search(r"(?m)^  push:", proposal_on) is None, "proposal must not run on push")
+    require("artifact_digest:" in proposal and "inputs.artifact_digest" in proposal, "proposal must accept its artifact digest input")
+    require("catalog-pack-baseline-proposal-${{ inputs.artifact_digest }}" in proposal, "proposal is not serialized by artifact digest")
+    require("contents: read" in proposal and "contents: write" not in proposal, "proposal Actions permissions are too broad")
+    require("repository: inflatable-cookie/effigy" in proposal, "proposal targets the wrong Effigy repository")
+    require("ref: main" in proposal, "proposal does not use current Effigy main")
+    require("token: ${{ steps.app-token.outputs.token }}" in proposal, "proposal checkout does not use the App token")
+    require("persist-credentials: true" in proposal, "proposal checkout cannot push its scoped branch")
+    require("proposal-token" in proposal, "proposal does not request an installation token")
+    require("CATALOG_PACK_EFFIGY_APP_PRIVATE_KEY" in proposal, "proposal App key secret is not explicit")
+    require("CATALOG_PACK_EFFIGY_APP_ID" in proposal, "proposal App id secret is not explicit")
+    require("CATALOG_PACK_EFFIGY_INSTALLATION_ID" in proposal, "proposal installation secret is not explicit")
+    require("proposal-artifact-check" in proposal, "proposal does not verify the pulled artifact")
+    require("gh attestation verify" in proposal, "proposal does not verify the digest-bound attestation")
+    require("proposal-attestation" in proposal, "proposal does not parse attestation proof")
+    require("proposal-prepare" in proposal and "proposal-verify" in proposal, "proposal lacks preparation or verification")
+    require('git -C "$EFFIGY_ROOT" push --set-upstream origin' in proposal, "proposal does not push only its branch")
+    require("gh pr create" in proposal, "proposal does not open a review PR")
+    require(not proposal_forbidden.search(proposal), "proposal workflow contains acceptance, release, or publication authority")
+    require_no_raw_input_in_run(proposal)
+
     injection_counterexample = """
       - name: Input injection counterexample
         run: >-
@@ -216,8 +249,11 @@ def workflow_check() -> dict[str, Any]:
         "actions_sha_pinned": True,
         "validate_checkout_only": True,
         "publication_pinned_attest": True,
+        "proposal_pinned_checkout": True,
         "validate_read_only": True,
         "publication_write_scoped": True,
+        "proposal_generated_only": True,
+        "proposal_branch_pr_only": True,
         "release_mutations_in_validate": False,
         "workflow_input_shell_guard": True,
         "hosted_controls": hosted,

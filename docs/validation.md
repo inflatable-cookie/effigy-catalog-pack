@@ -26,6 +26,11 @@ settings checkpoint between those jobs, not a workflow PATCH.
    subjects, plan-only mode, the live mutate gate, injected live-adapter inspect
    classification, org package GET routing, concurrency/token wiring, support
    refetch, and safe absent-`stable` behavior.
+6. `proposal-check` proves the generated-baseline proposal model without a
+   provider: raw manifest hash and descriptor-size binding, exact layer bytes,
+   deterministic lock generation, generated-only path allowlisting, canonical
+   narrow App token scope, Effigy verifier wiring, and no
+   approve/merge/release/publication path.
 
 The GET-only `support-releases` command checks that a GitHub Release exists for
 every required version and that `as_of_release` equals the latest non-draft,
@@ -39,6 +44,7 @@ python3 scripts/catalog_pack.py validate --effigy-root ../effigy --require-autho
 python3 scripts/catalog_pack.py import-proof --effigy-root ../effigy
 python3 scripts/catalog_pack.py publication-check --effigy-root ../effigy --require-authority
 python3 scripts/catalog_pack.py support-releases --effigy-root ../effigy
+python3 scripts/catalog_pack.py proposal-check
 ```
 
 Only `import-proof` requires the pack bytes to remain the one-time import
@@ -59,6 +65,19 @@ The two workflows stay narrow:
   `CATALOG_PACK_PUBLICATION_MUTATE=1` and pass `--mutate`. `workflow-check`
   still rejects raw `inputs.*` expressions in `run:` blocks and tests a
   malicious counterexample.
+- `proposal.yml` is a separate manual workflow. It accepts only a full OCI
+  manifest digest, pulls and attestation-verifies that artifact, then uses a
+  short-lived GitHub App installation token scoped to canonical
+  `inflatable-cookie/effigy` and `contents: write` plus `pull_requests: write`.
+  It fetches raw manifest bytes and binds their digest and descriptor size before
+  token minting or materialization. It checks out current Effigy `main`,
+  composes the generated snapshot/lock/evidence, runs the committed Rust
+  baseline verifier through a disposable integration harness, rechecks the
+  exact generated-only diff, and may only push a branch and open a PR. It has no
+  approval, merge, release, package, attestation, or publication authority.
+- `proposal-check` and the workflow guards are network-free. The App identity,
+  installation, secrets, dispatch, and a live proposal PR are intentionally
+  unconfigured provider state until an explicit operator gate.
 - `docs/evidence/hosted-controls.json` is a checked-in static provider
   snapshot consumed by the network-free `workflow-check`; it is not a claim
   that the provider still has those settings or that a hosted run passed.
