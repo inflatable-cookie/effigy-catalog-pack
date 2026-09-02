@@ -65,6 +65,24 @@ def classify_inspect_proof() -> dict[str, Any]:
         "current-version ORAS GHCR miss was not classified absent",
     )
     require(
+        classify_registry_inspect(
+            1,
+            "",
+            'Error: credential helper failed to find "docker-helper": executable: not found',
+        )
+        == "error",
+        "credential-helper quoted find miss was treated as registry absence",
+    )
+    require(
+        classify_registry_inspect(
+            1,
+            "",
+            'Error response from local cache: failed to find "pack": file: not found',
+        )
+        == "error",
+        "local-cache quoted find miss was treated as registry absence",
+    )
+    require(
         classify_registry_inspect(1, "", "Error: not found") == "error",
         "generic bare not-found was treated as registry absence",
     )

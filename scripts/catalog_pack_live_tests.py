@@ -253,6 +253,12 @@ def workflow_wiring_proof() -> dict[str, Any]:
         require("canonical" in str(error), str(error))
     else:
         fail("the preserved v1.0.0 identity was accepted after the recovery bump")
+    try:
+        actual_source_identity("v1.0.0", "f70637abe1024cf7b54cabe58c3bd5877dcf8eca", "1.0.1")
+    except CheckFailure as error:
+        require("canonical" in str(error), str(error))
+    else:
+        fail("the preserved v1.0.0 tag was accepted as executable source identity")
     require(
         "catalog-pack-publication-refs/tags/v1.0.1" != publication_concurrency_group("v1.0.1", "1.0.1"),
         "raw alias would not have been a distinct mutation lane",
