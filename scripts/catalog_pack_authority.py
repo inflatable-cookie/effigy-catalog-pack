@@ -100,8 +100,8 @@ def prove_import(authority: Path | None) -> dict[str, Any]:
 
     pack_facts = validate_pack_tree()
     require(
-        pack_facts["content_id"] == FOUNDATION_PACK_CONTENT_ID,
-        f"foundation pack content identity changed: {pack_facts['content_id']}",
+        pack_facts["content_id"] == PACK_CONTENT_ID,
+        f"pack content identity changed: {pack_facts['content_id']}",
     )
     support_oid = git_output(authority, ["rev-parse", f"{IMPORT_AUTHORITY_COMMIT}:{SUPPORT_RELATIVE.as_posix()}"])
     require(support_oid == IMPORT_SUPPORT_BLOB, f"import-era support blob is {support_oid}, expected {IMPORT_SUPPORT_BLOB}")

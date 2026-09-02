@@ -104,7 +104,7 @@ def publication_transaction_proof() -> dict[str, Any]:
     require(kinds.count("stable") == 1, "absent first-publication stable did not move once")
     require(finalized["rollback_exercised"] is False, "absent stable used a live rollback delete")
     require(finalized["absent_stable_recorded"] is True, "absent stable was not recorded")
-    require(first.inspect_version("v1.0.0") == created["candidate_digest"], "version pointer drifted")
+    require(first.inspect_version("v1.0.1") == created["candidate_digest"], "version pointer drifted")
     require(first.inspect_stable() == created["candidate_digest"], "stable did not finish on the candidate")
     require(first.anonymous_pulls >= 1, "anonymous pull was skipped")
     require(first.refetches == 1, "finalize did not refresh Effigy support authority")

@@ -96,6 +96,22 @@ def inspect_runner_proof() -> dict[str, Any]:
     fetch = [call for call in absent.calls if _binary(call, "oras") and "fetch" in call["argv"]][0]
     require(fetch["env"].get("GITHUB_TOKEN") == "test-token", "inspect did not receive GITHUB_TOKEN")
     require(f"{OCI_REPOSITORY}:{STABLE_TAG}" in fetch["argv"], "inspect argv lost the stable reference")
+    live_miss = ScriptedRunner(
+        [
+            _when(lambda call: _binary(call, "oras") and "login" in call["argv"], _proc()),
+            _when(
+                lambda call: _binary(call, "oras") and "fetch" in call["argv"],
+                _proc(
+                    1,
+                    stderr=(
+                        "Error response from registry: failed to find "
+                        f'"{OCI_REPOSITORY}:v1.0.0": {OCI_REPOSITORY}:v1.0.0: not found'
+                    ),
+                ),
+            ),
+        ]
+    )
+    require(_live(live_miss).inspect_stable() is None, "live ORAS 1.3.3 GHCR miss did not return None")
 
     denied = ScriptedRunner(
         [
@@ -107,7 +123,7 @@ def inspect_runner_proof() -> dict[str, Any]:
         ]
     )
     try:
-        _live(denied).inspect_version("v1.0.0")
+        _live(denied).inspect_version("v1.0.1")
     except CheckFailure as error:
         require("registry inspect failed" in str(error), str(error))
     else:
@@ -207,7 +223,7 @@ def workflow_wiring_proof() -> dict[str, Any]:
     require("push-to-registry: true" in publication, "pinned attest action does not push to the registry")
     require("dist/index.js" not in publication, "publication still executes actions/attest out of band")
     require("package settings" in publication, "publication does not document the operator visibility checkpoint")
-    require("not refs/tags/v1.0.0" in publication, "publication does not name the canonical source-tag spelling")
+    require("not refs/tags/v1.0.1" in publication, "publication does not name the canonical source-tag spelling")
     require(
         hosted["actions"]["selected_actions"]["patterns_allowed"]
         == [f"actions/checkout@{CHECKOUT_ACTION_SHA}"],
@@ -216,23 +232,29 @@ def workflow_wiring_proof() -> dict[str, Any]:
     from catalog_pack_publication import actual_source_identity, publication_concurrency_group
 
     require(
-        publication_concurrency_group("v1.0.0", "1.0.0") == "catalog-pack-publication-v1.0.0",
+        publication_concurrency_group("v1.0.1", "1.0.1") == "catalog-pack-publication-v1.0.1",
         "canonical concurrency key drifted",
     )
     try:
-        publication_concurrency_group("refs/tags/v1.0.0", "1.0.0")
+        publication_concurrency_group("refs/tags/v1.0.1", "1.0.1")
     except CheckFailure as error:
         require("canonical" in str(error), str(error))
     else:
         fail("refs/tags alias was accepted as a concurrency key")
     try:
-        actual_source_identity("refs/tags/v1.0.0", "a" * 40, "1.0.0")
+        actual_source_identity("refs/tags/v1.0.1", "a" * 40, "1.0.1")
     except CheckFailure as error:
         require("canonical" in str(error), str(error))
     else:
         fail("refs/tags alias was accepted as source identity")
+    try:
+        publication_concurrency_group("v1.0.0", "1.0.1")
+    except CheckFailure as error:
+        require("canonical" in str(error), str(error))
+    else:
+        fail("the preserved v1.0.0 identity was accepted after the recovery bump")
     require(
-        "catalog-pack-publication-refs/tags/v1.0.0" != publication_concurrency_group("v1.0.0", "1.0.0"),
+        "catalog-pack-publication-refs/tags/v1.0.1" != publication_concurrency_group("v1.0.1", "1.0.1"),
         "raw alias would not have been a distinct mutation lane",
     )
     return {
