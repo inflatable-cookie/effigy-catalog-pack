@@ -129,25 +129,32 @@ def verify_pulled_artifact(
     artifact_root: Path,
     manifest_path: Path,
     artifact_digest: str,
-    descriptor_path: Path | None = None,
+    descriptor_path: Path,
 ) -> dict[str, Any]:
     """Verify a digest-addressed pull before it can feed an Effigy proposal."""
 
     digest = require_sha256_digest(artifact_digest)
+    require(descriptor_path is not None, "registry descriptor is required for proposal artifact verification")
     try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        manifest_bytes = manifest_path.read_bytes()
+    except OSError as error:
+        fail(f"pulled artifact manifest is unreadable: {error}")
+    require(sha256_digest(manifest_bytes) == digest, "raw OCI manifest bytes differ from requested artifact digest")
+    try:
+        manifest = json.loads(manifest_bytes)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
         fail(f"pulled artifact manifest is invalid: {error}")
     require(isinstance(manifest, dict), "pulled artifact manifest is not an object")
 
-    if descriptor_path is not None:
-        try:
-            descriptor = json.loads(descriptor_path.read_text(encoding="utf-8"))
-        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
-            fail(f"pulled artifact descriptor is invalid: {error}")
-        require(isinstance(descriptor, dict), "pulled artifact descriptor is not an object")
-        require(descriptor.get("digest") == digest, "registry descriptor digest differs from requested artifact digest")
-        require(descriptor.get("mediaType") == OCI_MANIFEST_MEDIA_TYPE, "registry descriptor media type changed")
+    try:
+        descriptor = json.loads(descriptor_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        fail(f"pulled artifact descriptor is invalid: {error}")
+    require(isinstance(descriptor, dict), "pulled artifact descriptor is not an object")
+    require(descriptor.get("digest") == digest, "registry descriptor digest differs from requested artifact digest")
+    require(descriptor.get("mediaType") == OCI_MANIFEST_MEDIA_TYPE, "registry descriptor media type changed")
+    require(isinstance(descriptor.get("size"), int) and not isinstance(descriptor.get("size"), bool), "registry descriptor size is not an integer")
+    require(descriptor["size"] == len(manifest_bytes), "registry descriptor size differs from raw OCI manifest bytes")
     if manifest.get("digest") is not None:
         require(manifest.get("digest") == digest, "artifact manifest digest differs from requested artifact digest")
 
@@ -193,6 +200,9 @@ def verify_pulled_artifact(
     return {
         "artifact_verified": True,
         "manifest_digest": digest,
+        "manifest_bytes": len(manifest_bytes),
+        "manifest_digest_verified": True,
+        "descriptor_size_verified": True,
         "content_id": facts["content_id"],
         "pack_id": facts["pack_id"],
         "pack_version": facts["pack_version"],
@@ -269,7 +279,7 @@ def _expected_candidate(
     artifact_root: Path,
     manifest_path: Path,
     artifact_digest: str,
-    descriptor_path: Path | None = None,
+    descriptor_path: Path,
 ) -> tuple[dict[str, Any], Path, bytes, bytes]:
     report = verify_pulled_artifact(artifact_root, manifest_path, artifact_digest, descriptor_path)
     identity = dict(report["source_identity"])
@@ -286,7 +296,7 @@ def materialize_candidate(
     artifact_root: Path,
     manifest_path: Path,
     artifact_digest: str,
-    descriptor_path: Path | None = None,
+    descriptor_path: Path,
 ) -> dict[str, Any]:
     """Write the candidate into a checkout only after all artifact checks pass."""
 
@@ -342,7 +352,7 @@ def verify_generated_only_diff(
     artifact_root: Path,
     manifest_path: Path,
     artifact_digest: str,
-    descriptor_path: Path | None = None,
+    descriptor_path: Path,
 ) -> dict[str, Any]:
     """Recheck exact bytes and status after staging, catching hand edits."""
 
@@ -396,7 +406,7 @@ def verify_proposal(
     artifact_root: Path,
     manifest_path: Path,
     artifact_digest: str,
-    descriptor_path: Path | None = None,
+    descriptor_path: Path,
     *,
     run_verifier: bool = True,
     offline: bool = False,

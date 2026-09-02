@@ -24,9 +24,11 @@ The installation-token request is:
 It is sent to
 `POST /app/installations/{installation_id}/access_tokens` after an RS256 App
 JWT is created with a ten-minute maximum lifetime. The response is checked for
-the `inflatable-cookie/effigy` repository only, `contents: write`,
-`pull_requests: write`, and no permission outside those two plus GitHub's
-implicit `metadata: read`. The token is never included in a report.
+exactly one repository whose canonical `full_name` is
+`inflatable-cookie/effigy` (and whose retained owner login, when present, is
+`inflatable-cookie`), plus `contents: write`, `pull_requests: write`, and no
+permission outside those two plus GitHub's implicit `metadata: read`. Reports
+return the canonical repository identity, never the token.
 
 The hosted Actions job itself has `contents: read` only. It uses the exact-SHA
 checkout action
@@ -48,12 +50,21 @@ The candidate may change exactly:
 - `crates/effigy-catalog/catalog-pack.lock.toml`; and
 - one dated `docs/logs/*-catalog-pack-generated-baseline-proposal.md` file.
 
-The artifact is pulled by digest, its registry descriptor is compared with the
-requested digest, every layer title is checked for safe sorted inventory, and
-every layer size and byte digest is compared with the pulled pack root. The
-lock is rendered twice from the same facts and the candidate bytes are checked
-again after staging. Product code, workflows, unrelated docs, traversal paths,
-hand-edited snapshot bytes, and incomplete lock/evidence changes fail closed.
+The artifact is pulled by digest. The raw OCI manifest bytes are hashed and
+must equal the requested digest; the registry descriptor must carry that same
+digest and its exact byte size. Every layer title is checked for safe sorted
+inventory, and every layer size and byte digest is compared with the pulled pack
+root. The lock is rendered twice from the same facts and the candidate bytes are
+checked again after staging. Product code, workflows, unrelated docs,
+traversal paths, hand-edited snapshot bytes, and incomplete lock/evidence
+changes fail closed.
+
+## Review Finding Map
+
+| Review finding | Repair | Proof |
+| --- | --- | --- |
+| Manifest identity was not bound to the requested digest. | The workflow fetches raw manifest bytes; verification hashes those bytes against the request and binds the descriptor size before parsing or materializing. | `immutable_artifact_input_proof` changes manifest annotations while keeping request and descriptor fixed; it is rejected. `no_provider_mutation_proof` verifies artifact rejection precedes token mint, materialization, and push. |
+| App response checked only the short repository name. | Verification requires canonical `full_name` `inflatable-cookie/effigy`, validates a retained canonical owner login, and reports the canonical identity. | `app_token_scope_proof` rejects a foreign-owner `foreign-owner/effigy` response and checks the canonical identity in the accepted report. |
 
 ## Independent Effigy Verification
 
@@ -71,14 +82,16 @@ provider access. Named counterexamples cover:
 
 - `generated_only_path_allowlist_proof` — product code, workflows, unrelated
   docs, traversal, and incomplete evidence;
-- `immutable_artifact_input_proof` — wrong descriptor, hand-edited layer bytes,
+- `immutable_artifact_input_proof` — raw manifest hash and descriptor size,
+  fixed-request manifest change, wrong descriptor, hand-edited layer bytes,
   exact inventory, and exact layer digests;
 - `candidate_diff_proof` — materialization, clean status, staged-policy proof,
   hand edits, and product-code changes;
 - `exact_lock_generation_proof` — byte-identical repeated lock generation and
   complete typed fields;
-- `app_token_scope_proof` — exact endpoint/repository/permissions and broad
-  response rejection;
+- `app_token_scope_proof` — exact endpoint/repository/permissions, canonical
+  repository identity, foreign-owner same-name rejection, and broad response
+  rejection;
 - `effigy_verifier_seam_proof` — explicit offline Cargo command and Effigy API
   harness; and
 - `no_provider_mutation_proof` — branch/PR-only authority and publication

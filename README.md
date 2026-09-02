@@ -56,10 +56,12 @@ mutate gate, injected command-runner inspect/org-route/refetch proofs, and safe
 absent-`stable` behavior, without contacting a registry.
 
 `pack:proposal-check` proves the generated-baseline proposal boundary without
-provider access. It rejects hand-edited artifact bytes, unsafe or unrelated
-Effigy paths, incomplete lock/evidence changes, and broad GitHub App token
-responses. The model also proves byte-deterministic lock generation and the
-temporary seam that invokes Effigy's committed offline baseline verifier.
+provider access. It hash-binds raw OCI manifest bytes and descriptor size to the
+requested digest, rejects hand-edited artifact bytes, unsafe or unrelated
+Effigy paths, incomplete lock/evidence changes, foreign-owner same-name
+repositories, and broad GitHub App token responses. The model also proves
+byte-deterministic lock generation and the temporary seam that invokes Effigy's
+committed offline baseline verifier.
 
 The protected manual `publication.yml` workflow requires the canonical
 annotated source tag `v<pack-version>` (not `refs/tags/v…`) and its full peeled
@@ -98,9 +100,11 @@ through step environment variables and quoted shell variables, and
 guard.
 
 The manual `proposal.yml` workflow accepts only an immutable OCI manifest
-digest. It verifies the public artifact and digest-bound attestation, then
-requests a short-lived GitHub App installation token scoped to the `effigy`
-repository with `contents: write` and `pull_requests: write`. It may create one
+digest. It fetches and hash-verifies the raw public manifest bytes against the
+requested digest and registry descriptor size, verifies the digest-bound
+attestation, then requests a short-lived GitHub App installation token scoped to
+canonical `inflatable-cookie/effigy` with `contents: write` and
+`pull_requests: write`. It may create one
 generated-only Effigy branch and pull request. The allowlist is limited to
 `crates/effigy-catalog/catalog/`, its typed lock, and one dated proposal
 evidence file; Effigy owners retain validation, review, merge, release, and

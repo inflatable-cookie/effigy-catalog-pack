@@ -27,9 +27,10 @@ settings checkpoint between those jobs, not a workflow PATCH.
    classification, org package GET routing, concurrency/token wiring, support
    refetch, and safe absent-`stable` behavior.
 6. `proposal-check` proves the generated-baseline proposal model without a
-   provider: immutable artifact input, exact layer bytes, deterministic lock
-   generation, generated-only path allowlisting, narrow App token scope,
-   Effigy verifier wiring, and no approve/merge/release/publication path.
+   provider: raw manifest hash and descriptor-size binding, exact layer bytes,
+   deterministic lock generation, generated-only path allowlisting, canonical
+   narrow App token scope, Effigy verifier wiring, and no
+   approve/merge/release/publication path.
 
 The GET-only `support-releases` command checks that a GitHub Release exists for
 every required version and that `as_of_release` equals the latest non-draft,
@@ -66,10 +67,12 @@ The two workflows stay narrow:
   malicious counterexample.
 - `proposal.yml` is a separate manual workflow. It accepts only a full OCI
   manifest digest, pulls and attestation-verifies that artifact, then uses a
-  short-lived GitHub App installation token scoped to the Effigy repository and
-  `contents: write` plus `pull_requests: write`. It checks out current Effigy
-  `main`, composes the generated snapshot/lock/evidence, runs the committed
-  Rust baseline verifier through a disposable integration harness, rechecks the
+  short-lived GitHub App installation token scoped to canonical
+  `inflatable-cookie/effigy` and `contents: write` plus `pull_requests: write`.
+  It fetches raw manifest bytes and binds their digest and descriptor size before
+  token minting or materialization. It checks out current Effigy `main`,
+  composes the generated snapshot/lock/evidence, runs the committed Rust
+  baseline verifier through a disposable integration harness, rechecks the
   exact generated-only diff, and may only push a branch and open a PR. It has no
   approval, merge, release, package, attestation, or publication authority.
 - `proposal-check` and the workflow guards are network-free. The App identity,

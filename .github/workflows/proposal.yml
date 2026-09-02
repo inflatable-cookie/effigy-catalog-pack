@@ -47,7 +47,7 @@ jobs:
           artifact_dir="$RUNNER_TEMP/catalog-pack-artifact"
           mkdir -p "$artifact_dir"
           oras manifest fetch --descriptor "ghcr.io/inflatable-cookie/effigy-catalog-pack@$ARTIFACT_DIGEST" > "$RUNNER_TEMP/catalog-pack-descriptor.json"
-          oras manifest fetch --format json "ghcr.io/inflatable-cookie/effigy-catalog-pack@$ARTIFACT_DIGEST" > "$RUNNER_TEMP/catalog-pack-manifest.json"
+          oras manifest fetch "ghcr.io/inflatable-cookie/effigy-catalog-pack@$ARTIFACT_DIGEST" > "$RUNNER_TEMP/catalog-pack-manifest.json"
           docker_config="$RUNNER_TEMP/catalog-pack-docker"
           mkdir -p "$docker_config"
           printf '%s\n' '{}' > "$docker_config/config.json"

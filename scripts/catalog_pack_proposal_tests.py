@@ -64,15 +64,26 @@ def immutable_artifact_input_proof() -> dict[str, Any]:
         identity = planned_source_identity(validate_pack_tree()["pack_version"])
         built = build_oci_layout(layout, PACK_ROOT, identity)
         materialize_oci_layers(layout, artifact)
-        manifest, _, _ = read_layout_manifest(layout)
+        _manifest, manifest_bytes, _ = read_layout_manifest(layout)
         descriptor = json.loads((layout / "index.json").read_text(encoding="utf-8"))["manifests"][0]
         manifest_path = root / "manifest.json"
         descriptor_path = root / "descriptor.json"
-        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        manifest_path.write_bytes(manifest_bytes)
         descriptor_path.write_text(json.dumps(descriptor), encoding="utf-8")
         report = verify_pulled_artifact(artifact, manifest_path, built["manifest_digest"], descriptor_path)
         require(report["artifact_verified"] is True, "verified artifact was not accepted")
         require(report["manifest_digest"] == built["manifest_digest"], "artifact digest was not retained")
+        require(report["manifest_digest_verified"] is True, "manifest bytes were not hash-bound")
+        require(report["descriptor_size_verified"] is True, "manifest bytes were not descriptor-size-bound")
+
+        changed_manifest_bytes = manifest_bytes.replace(b"v1.0.1", b"v1.0.2", 1)
+        require(len(changed_manifest_bytes) == len(manifest_bytes), "manifest-change counterexample changed descriptor size")
+        manifest_path.write_bytes(changed_manifest_bytes)
+        _expect_failure(
+            lambda: verify_pulled_artifact(artifact, manifest_path, built["manifest_digest"], descriptor_path),
+            "manifest bytes changed with request and descriptor fixed",
+        )
+        manifest_path.write_bytes(manifest_bytes)
 
         tampered = artifact / "README.md"
         tampered.write_bytes(tampered.read_bytes() + b"hand edit\n")
@@ -91,6 +102,9 @@ def immutable_artifact_input_proof() -> dict[str, Any]:
     return {
         "digest_required": True,
         "descriptor_bound": True,
+        "raw_manifest_hash_verified": True,
+        "descriptor_size_verified": True,
+        "manifest_change_rejected": True,
         "exact_inventory_verified": True,
         "exact_layer_bytes_verified": True,
         "hand_edit_rejected": True,
@@ -132,11 +146,11 @@ def candidate_diff_proof() -> dict[str, Any]:
         identity = planned_source_identity(validate_pack_tree()["pack_version"])
         built = build_oci_layout(layout, PACK_ROOT, identity)
         materialize_oci_layers(layout, artifact)
-        manifest, _, _ = read_layout_manifest(layout)
+        _manifest, manifest_bytes, _ = read_layout_manifest(layout)
         descriptor = json.loads((layout / "index.json").read_text(encoding="utf-8"))["manifests"][0]
         manifest_path = root / "manifest.json"
         descriptor_path = root / "descriptor.json"
-        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        manifest_path.write_bytes(manifest_bytes)
         descriptor_path.write_text(json.dumps(descriptor), encoding="utf-8")
 
         (effigy / "crates/effigy-catalog").mkdir(parents=True)
@@ -179,17 +193,23 @@ def app_token_scope_proof() -> dict[str, Any]:
             "token": "test-token",
             "expires_at": "2026-09-02T16:00:00Z",
             "permissions": {"contents": "write", "pull_requests": "write", "metadata": "read"},
-            "repositories": [{"name": "effigy"}],
+            "repositories": [{
+                "name": "effigy",
+                "full_name": PROPOSAL_APP_REPOSITORY_FULL_NAME,
+                "owner": {"login": PROPOSAL_APP_REPOSITORY_OWNER},
+            }],
         }
     )
     require(accepted["token"] == "redacted", "App token entered a report")
+    require(accepted["repository_full_name"] == PROPOSAL_APP_REPOSITORY_FULL_NAME, "App token report lost canonical identity")
+    require(accepted["repository_owner"] == PROPOSAL_APP_REPOSITORY_OWNER, "App token report lost canonical owner")
     _expect_failure(
         lambda: validate_app_token_response(
             {
                 "token": "test-token",
                 "expires_at": "2026-09-02T16:00:00Z",
                 "permissions": {"contents": "write", "pull_requests": "write", "administration": "write"},
-                "repositories": [{"name": "effigy"}],
+                "repositories": [{"name": "effigy", "full_name": PROPOSAL_APP_REPOSITORY_FULL_NAME}],
             }
         ),
         "broad App permission response",
@@ -200,7 +220,7 @@ def app_token_scope_proof() -> dict[str, Any]:
                 "token": "test-token",
                 "expires_at": "2026-09-02T16:00:00Z",
                 "permissions": {"contents": "write", "pull_requests": "write", "metadata": "write"},
-                "repositories": [{"name": "effigy"}],
+                "repositories": [{"name": "effigy", "full_name": PROPOSAL_APP_REPOSITORY_FULL_NAME}],
             }
         ),
         "broad metadata permission response",
@@ -211,10 +231,10 @@ def app_token_scope_proof() -> dict[str, Any]:
                 "token": "test-token",
                 "expires_at": "2026-09-02T16:00:00Z",
                 "permissions": {"contents": "write", "pull_requests": "write"},
-                "repositories": [{"name": "effigy-catalog-pack"}],
+                "repositories": [{"name": "effigy", "full_name": "foreign-owner/effigy", "owner": {"login": "foreign-owner"}}],
             }
         ),
-        "wrong repository token response",
+        "foreign-owner same-name token response",
     )
     _expect_failure(lambda: app_token_request("0", "456"), "zero App id")
     return {
@@ -222,6 +242,8 @@ def app_token_scope_proof() -> dict[str, Any]:
         "effigy_repository_only": True,
         "contents_write_only_for_effigy": True,
         "pull_requests_write_only_for_effigy": True,
+        "canonical_repository_identity": PROPOSAL_APP_REPOSITORY_FULL_NAME,
+        "foreign_owner_same_name_rejected": True,
         "broad_response_rejected": True,
         "token_redacted": True,
     }
@@ -254,6 +276,8 @@ def no_provider_mutation_proof() -> dict[str, Any]:
     require('git -C "$EFFIGY_ROOT" push' in workflow, "proposal workflow does not publish its branch")
     require("gh pr create" in workflow, "proposal workflow does not create a review PR")
     require("contents: read" in workflow, "proposal workflow lacks read-only Actions permissions")
+    require('oras manifest fetch "ghcr.io/inflatable-cookie/effigy-catalog-pack@$ARTIFACT_DIGEST"' in workflow, "proposal workflow does not fetch raw manifest bytes")
+    require("oras manifest fetch --format json" not in workflow, "proposal workflow rewrites the raw manifest")
     require("CATALOG_PACK_PUBLICATION_MUTATE" not in workflow, "proposal workflow imports publication mutation authority")
     require("publication.yml" not in workflow, "proposal workflow depends on publication workflow completion")
     publication = (ROOT / ".github" / "workflows" / "publication.yml").read_text(encoding="utf-8")
@@ -261,10 +285,17 @@ def no_provider_mutation_proof() -> dict[str, Any]:
     entry = (ROOT / "scripts" / "catalog_pack.py").read_text(encoding="utf-8")
     publish_body = entry.partition("def publish_command")[2].partition("def main")[0].lower()
     require("proposal" not in publish_body, "publish path depends on proposal")
+    artifact_check = workflow.index("proposal-artifact-check")
+    token_mint = workflow.index("Mint a narrow short-lived Effigy installation token")
+    materialize = workflow.index("Generate the candidate snapshot, lock, and evidence")
+    branch_push = workflow.index('git -C "$EFFIGY_ROOT" push')
+    require(artifact_check < token_mint < materialize < branch_push, "manifest verification does not precede token, materialization, and push")
     return {
         "branch_and_pr_only": True,
         "approve_merge_release_rejected": True,
         "publication_independent": True,
+        "raw_manifest_and_descriptor_bound": True,
+        "manifest_verified_before_materialize_token_push": True,
         "ordinary_model_provider_writes": [],
     }
 

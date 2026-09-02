@@ -46,17 +46,25 @@ def validate_app_token_response(payload: Mapping[str, Any]) -> dict[str, Any]:
         require(permissions["metadata"] == "read", "GitHub App token metadata permission is broader than read")
     repositories = payload.get("repositories")
     require(isinstance(repositories, list) and repositories, "GitHub App token response has no repository scope")
-    names: list[str] = []
+    full_names: list[str] = []
     for repository in repositories:
         require(isinstance(repository, dict), "GitHub App token repository scope is malformed")
         name = repository.get("name")
-        require(isinstance(name, str), "GitHub App token repository scope lacks a name")
-        names.append(name)
-    require(names == [PROPOSAL_APP_REPOSITORY], f"GitHub App token is scoped to {names}, not Effigy alone")
+        require(name == PROPOSAL_APP_REPOSITORY, "GitHub App token repository scope has the wrong short name")
+        full_name = repository.get("full_name")
+        require(full_name == PROPOSAL_APP_REPOSITORY_FULL_NAME, "GitHub App token repository scope is not canonical Effigy")
+        owner = repository.get("owner")
+        if owner is not None:
+            require(isinstance(owner, dict), "GitHub App token repository owner is malformed")
+            require(owner.get("login") == PROPOSAL_APP_REPOSITORY_OWNER, "GitHub App token repository owner is not canonical")
+        full_names.append(full_name)
+    require(full_names == [PROPOSAL_APP_REPOSITORY_FULL_NAME], f"GitHub App token is scoped to {full_names}, not canonical Effigy alone")
     return {
         "token": "redacted",
         "expires_at": expires_at,
-        "repositories": names,
+        "repositories": full_names,
+        "repository_full_name": full_names[0],
+        "repository_owner": PROPOSAL_APP_REPOSITORY_OWNER,
         "permissions": dict(permissions),
         "short_lived": True,
     }

@@ -94,12 +94,13 @@ def support_releases_command(args: argparse.Namespace) -> dict[str, Any]:
 def proposal_artifact_args(args: argparse.Namespace) -> dict[str, Any]:
     require(args.artifact_root is not None, "proposal artifact root is required")
     require(args.artifact_manifest is not None, "proposal artifact manifest is required")
+    require(args.artifact_descriptor is not None, "proposal artifact descriptor is required")
     require(args.artifact_digest is not None, "proposal artifact digest is required")
     return {
         "artifact_root": Path(args.artifact_root),
         "manifest_path": Path(args.artifact_manifest),
         "artifact_digest": args.artifact_digest,
-        "descriptor_path": Path(args.artifact_descriptor) if args.artifact_descriptor else None,
+        "descriptor_path": Path(args.artifact_descriptor),
     }
 
 
