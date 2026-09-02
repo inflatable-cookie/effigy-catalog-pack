@@ -51,13 +51,18 @@ python3 scripts/catalog_pack.py import-proof --effigy-root ../effigy
 current commit. `pack:rehearse` proves absent, same-digest, changed-source,
 and changed-annotated-tag collision handling without a push.
 `pack:publication-check` proves the ordered publication transaction, including
-fail-closed collision, stale support, unattested/private subjects, and the live
-mutate gate, without contacting a registry.
+fail-closed collision, stale support, unattested/private subjects, the live
+mutate gate, injected command-runner inspect/org-route/refetch proofs, and safe
+absent-`stable` behavior, without contacting a registry.
 
 The protected manual `publication.yml` workflow requires an already-existing
-annotated source tag and its full peeled commit. It is the only path that may
-set `CATALOG_PACK_PUBLICATION_MUTATE=1` and pass `--mutate`. Ordinary QA never
-imports the live registry adapter.
+annotated source tag and its full peeled commit. It serializes a version-publish
+job and a finalize job. The operator makes the linked organization package
+public through GitHub package settings between those jobs. Finalize uses pinned
+`actions/attest` and is the only path that may set
+`CATALOG_PACK_PUBLICATION_MUTATE=1` and pass `--mutate`. Ordinary QA never
+imports the live registry adapter. This PR does not change selected-actions
+provider policy.
 
 Hosted Actions, environment, and tag-rule evidence is normalized in
 [hosted-controls.json](docs/evidence/hosted-controls.json).

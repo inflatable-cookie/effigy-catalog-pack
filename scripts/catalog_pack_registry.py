@@ -31,6 +31,8 @@ def require_live_mutation_gate(environment: Mapping[str, str] | None = None) -> 
 class FakeRegistry:
     """In-memory GHCR/package/attestation stand-in. Ordinary QA uses only this."""
 
+    requires_live_gate = False
+
     def __init__(
         self,
         *,
@@ -50,6 +52,7 @@ class FakeRegistry:
         self.writes: list[tuple[str, str | None]] = []
         self.authenticated_pulls = 0
         self.anonymous_pulls = 0
+        self.refetches = 0
 
     def inspect_version(self, tag: str) -> str | None:
         require(tag.startswith("v"), f"version tag is not a version pointer: {tag}")
@@ -63,11 +66,6 @@ class FakeRegistry:
         self.version_digest = digest
         if self.repository is None:
             self.repository = PACK_GITHUB_REPOSITORY
-
-    def set_public(self) -> None:
-        self.writes.append(("visibility", "public"))
-        self.visibility = "public"
-        self.repository = PACK_GITHUB_REPOSITORY
 
     def package_state(self) -> dict[str, Any]:
         return {"visibility": self.visibility, "repository": self.repository}
@@ -96,3 +94,6 @@ class FakeRegistry:
         require(tag == STABLE_TAG, f"refusing to untag {tag}")
         self.writes.append(("stable-rollback", self.stable_digest))
         self.stable_digest = None
+
+    def refresh_support_authority(self, authority: Path | None) -> None:
+        self.refetches += 1

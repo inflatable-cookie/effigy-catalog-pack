@@ -21,6 +21,7 @@ from catalog_pack_registry import FakeRegistry
 from catalog_pack_shared import (
     CheckFailure,
     PACK_ROOT,
+    require,
     validate_pack_tree,
 )
 from catalog_pack_transaction import run_publication
@@ -80,6 +81,10 @@ def support_releases_command(args: argparse.Namespace) -> dict[str, Any]:
 def publish_command(args: argparse.Namespace) -> dict[str, Any]:
     authority = resolve_authority(args.effigy_root)
     if args.mutate:
+        require(
+            args.phase in {"version", "finalize-preflight", "finalize"},
+            "live publication requires --phase version, finalize-preflight, or finalize",
+        )
         from catalog_pack_live import LiveRegistry
 
         adapter: Any = LiveRegistry()
@@ -91,6 +96,7 @@ def publish_command(args: argparse.Namespace) -> dict[str, Any]:
         source_ref=args.source_ref,
         adapter=adapter,
         mutate=args.mutate,
+        phase=args.phase or "version",
     )
 
 
@@ -121,6 +127,11 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--source-ref", help="full peeled pack commit for publication")
     parser.add_argument("--output", help="OCI layout destination for oci-layout")
     parser.add_argument("--mutate", action="store_true", help="perform live publication writes (protected job only)")
+    parser.add_argument(
+        "--phase",
+        choices=("version", "finalize-preflight", "finalize"),
+        help="protected publication phase",
+    )
     args = parser.parse_args(argv)
 
     try:

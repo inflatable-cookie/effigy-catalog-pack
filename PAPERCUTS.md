@@ -13,8 +13,7 @@ they hit a solvable hurdle; they do not stop the current task to fix one.
 - Possible fix: rename the environment after an explicit settings mutation is authorized
 - Surface: GitHub environment, `.github/workflows/publication.yml`, hosted-controls.json
 
-### [ ] User package visibility PATCH is undocumented — 2026-09-02
-- Friction: GHCR packages default private; REST docs expose visibility on GET but not a first-class public mutation
-- Impact: first publication must PATCH `/users/.../packages/container/...` and treat failure as stop, not UI bypass
-- Possible fix: replace with a documented GitHub API once one exists
-- Surface: `scripts/catalog_pack_live.py` `set_public`
+## Closed
+
+### [x] User package visibility PATCH is undocumented — 2026-09-02
+- Resolution: first publication publishes the private version, then the operator makes the linked organization package public through GitHub package settings. Finalize GET-verifies `orgs/inflatable-cookie/packages/container/effigy-catalog-pack` before attestation, anonymous pull, and `stable`. No REST PATCH is part of the transaction.

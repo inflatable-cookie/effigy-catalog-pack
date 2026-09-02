@@ -1,8 +1,9 @@
 # Catalog-pack validation
 
 Card 1105 keeps ordinary proof local and fail-closed. Live package, attestation,
-visibility, and `stable` writes exist only in the protected publication job
-after the implementation PR is merged.
+and `stable` writes exist only in the serialized protected publication jobs
+after the implementation PR is merged. Public visibility is an operator package-
+settings checkpoint between those jobs, not a workflow PATCH.
 
 `scripts/catalog_pack.py` checks these boundaries:
 
@@ -22,7 +23,9 @@ after the implementation PR is merged.
 5. `rehearse` still models absent, same-digest, and collision outcomes without a
    push. `publication-check` runs the ordered transaction against an in-memory
    registry and proves fail-closed collision, stale support, private/unattested
-   subjects, plan-only mode, and the live mutate gate.
+   subjects, plan-only mode, the live mutate gate, injected live-adapter inspect
+   classification, org package GET routing, concurrency/token wiring, support
+   refetch, and safe absent-`stable` behavior.
 
 The GET-only `support-releases` command checks that a GitHub Release exists for
 every required version and that `as_of_release` equals the latest non-draft,
@@ -47,10 +50,13 @@ The two workflows stay narrow:
   checks out Effigy `main` for current support and never passes `--mutate`.
 - `publication.yml` is manual, accepts only an existing annotated source tag
   plus its full peeled commit, and names the protected
-  `catalog-pack-publication-rehearsal` environment. Job permissions are
-  `contents: read` plus `packages`, `id-token`, and `attestations` write. It is
-  the only workflow that may set `CATALOG_PACK_PUBLICATION_MUTATE=1` and pass
-  `--mutate`. `workflow-check` still rejects raw `inputs.*` expressions in
+  `catalog-pack-publication-rehearsal` environment. It serializes `publish` then
+  `finalize` by source tag, exports `GITHUB_TOKEN`/`GH_TOKEN` from
+  `${{ github.token }}`, and sets `GITHUB_ENVIRONMENT` explicitly. `publish`
+  may write the version package; `finalize` also has `id-token` and
+  `attestations` write and is the only job that uses pinned `actions/attest`.
+  It is the only workflow that may set `CATALOG_PACK_PUBLICATION_MUTATE=1` and
+  pass `--mutate`. `workflow-check` still rejects raw `inputs.*` expressions in
   `run:` blocks and tests a malicious counterexample.
 - `docs/evidence/hosted-controls.json` is a checked-in static provider
   snapshot consumed by the network-free `workflow-check`; it is not a claim

@@ -86,6 +86,13 @@ def workflow_check() -> dict[str, Any]:
         r"contents\s*:\s*write|pull_request:)",
         re.IGNORECASE,
     )
+    allowed_actions = {
+        "validate.yml": {f"actions/checkout@{CHECKOUT_ACTION_SHA}"},
+        "publication.yml": {
+            f"actions/checkout@{CHECKOUT_ACTION_SHA}",
+            f"actions/attest@{ATTEST_ACTION_COMMIT}",
+        },
+    }
     uses_pattern = re.compile(r"^\s*-?\s*uses:\s*([^\s#]+)", re.MULTILINE)
     action_pattern = re.compile(r"^[^@]+@([0-9a-f]{40})$")
     for path in sorted(workflow_root.iterdir()):
@@ -93,12 +100,11 @@ def workflow_check() -> dict[str, Any]:
             continue
         contents = path.read_text()
         require("permissions:" in contents and "contents: read" in contents, f"workflow lacks contents: read: {path.name}")
+        permitted = allowed_actions.get(path.name)
+        require(permitted is not None, f"unexpected workflow file: {path.name}")
         for action in uses_pattern.findall(contents):
             require(action_pattern.match(action), f"workflow action is not pinned by full SHA: {path.name}: {action}")
-            require(
-                action == f"actions/checkout@{CHECKOUT_ACTION_SHA}",
-                f"workflow uses an action other than the pinned checkout: {path.name}: {action}",
-            )
+            require(action in permitted, f"workflow uses a disallowed action: {path.name}: {action}")
 
     def run_blocks(contents: str) -> list[str]:
         lines = contents.splitlines()
@@ -144,8 +150,28 @@ def workflow_check() -> dict[str, Any]:
     require("--require-authority" in validation, "validate workflow must verify the current Effigy support policy")
     require("publication-check" in validation, "validate workflow must run the network-free publication transaction proof")
     require("workflow_dispatch:" in publication, "publication must be manual")
-    require("pull_request:" not in publication and "push:" not in publication, "publication must not run on push or pull_request")
+    on_section, _, jobs_section = publication.partition("jobs:")
+    require("pull_request:" not in on_section, "publication must not run on pull_request")
+    require(re.search(r"(?m)^  push:", on_section) is None, "publication must not run on push")
+    require("push-to-registry:" in jobs_section, "finalize must push attestation to the registry")
     require("catalog-pack-publication-rehearsal" in publication, "publication must name its protected environment")
+    require("group: catalog-pack-publication-${{ inputs.source_tag }}" in publication, "publication must serialize by source tag")
+    require("cancel-in-progress: false" in publication, "publication must not cancel an in-progress version")
+    require("GITHUB_TOKEN: ${{ github.token }}" in publication, "publication must export github.token as GITHUB_TOKEN")
+    require("GH_TOKEN: ${{ github.token }}" in publication, "publication must export github.token as GH_TOKEN")
+    require(
+        f"GITHUB_ENVIRONMENT: {PUBLICATION_ENVIRONMENT}" in publication,
+        "publication must set GITHUB_ENVIRONMENT explicitly",
+    )
+    require("needs: publish" in publication, "finalize must wait for publish")
+    require("--phase version" in publication, "publication must dispatch the version phase")
+    require("--phase finalize-preflight" in publication, "publication must dispatch finalize-preflight")
+    require("--phase finalize" in publication, "publication must dispatch the finalize phase")
+    require(f"actions/attest@{ATTEST_ACTION_COMMIT}" in publication, "finalize must use pinned actions/attest")
+    require("package settings" in publication, "publication must document the operator visibility checkpoint")
+    require("users/inflatable-cookie/packages" not in publication, "publication still uses the user package route")
+    require("PATCH" not in publication, "publication workflow still PATCHes package visibility")
+    require("dist/index.js" not in publication, "publication still executes actions/attest out of band")
     require("ref: main" in publication, "publication must check out Effigy's current default branch")
     require(f"ref: {IMPORT_AUTHORITY_COMMIT}" not in publication, "publication must not pin support to the import commit")
     require("packages: write" in publication, "publication must grant packages: write")
@@ -187,7 +213,8 @@ def workflow_check() -> dict[str, Any]:
     return {
         "workflow_files": sorted(expected),
         "actions_sha_pinned": True,
-        "checkout_only_actions": True,
+        "validate_checkout_only": True,
+        "publication_pinned_attest": True,
         "validate_read_only": True,
         "publication_write_scoped": True,
         "release_mutations_in_validate": False,
