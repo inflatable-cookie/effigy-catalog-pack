@@ -8,6 +8,8 @@ minimum_effigy_version = "0.12.1"
 "pack:import-proof" = "python3 scripts/catalog_pack.py import-proof"
 "pack:oci" = "python3 scripts/catalog_pack.py oci-layout"
 "pack:rehearse" = "python3 scripts/catalog_pack.py rehearse --require-authority"
+"pack:publication-check" = "python3 scripts/catalog_pack.py publication-check --require-authority"
+"pack:support-releases" = "python3 scripts/catalog_pack.py support-releases"
 "pack:effigy" = "python3 scripts/catalog_pack.py effigy-smoke --require-authority"
 "pack:workflow-check" = "python3 scripts/catalog_pack.py workflow-check"
 "pack:provider-controls" = "python3 scripts/catalog_pack.py provider-controls"
@@ -22,6 +24,7 @@ validate = [
   { task = "pack:support" },
   { task = "pack:oci" },
   { task = "pack:rehearse" },
+  { task = "pack:publication-check" },
 ]
 
 qa = [

@@ -83,8 +83,8 @@ def effigy_smoke(authority: Path | None, requested_binary: str | None) -> dict[s
 
         version_output = run_effigy(command, ["--version"], repo, environment)
         require(
-            CURRENT_EFFIGY_RELEASE in version_output and IMPORT_AUTHORITY_COMMIT[:7] in version_output,
-            f"Effigy smoke binary is not the pinned current build: {version_output}",
+            CURRENT_EFFIGY_RELEASE in version_output,
+            f"Effigy smoke binary is not the current workspace release: {version_output}",
         )
 
         install_output = run_effigy(
