@@ -79,9 +79,13 @@ reverse.
 - org package `effigy-catalog-pack`, type `container`,
   visibility `public`, linked repository `inflatable-cookie/effigy-catalog-pack`;
 - version `1200107352` carries both `v1.0.1` and `stable` tags (same manifest,
-  therefore the same digest); the attestation artifact (`1200380429`,
-  referrers tag `sha256-91de584e…`) and its internal index entry (`1200380396`)
-  complete the three version records.
+  therefore the same digest); the attestation artifact itself is version
+  `1200380396` at digest
+  `sha256:6727b95d20e7fc647151e097160f0d8c16eb884e3e29f1e24b927c06074d1f43` —
+  the digest the finalize log reports as the registry attestation upload — and
+  version `1200380429` is the OCI referrers index pointer carrying the
+  subject-derived referrers tag `sha256-91de584e…`; together they complete the
+  three version records.
 
 ## Provider State
 
