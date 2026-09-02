@@ -21,8 +21,12 @@ snapshot.
   created only from a reviewed repair head, the public GHCR package,
   digest-bound attestation, and `stable` movement only. The repair PR must be
   reviewed and merged before those mutations.
-- `.github/workflows/` edits are authorized for card `1105` only within the
+- `.github/workflows/` edits are authorized for card `1105` within the
   protected first-publication transaction and its read-only validation path.
+- Card `1108` may add the narrow generated-baseline proposal workflow and its
+  network-free validation. It does not authorize GitHub App registration or
+  installation, secret writes, dispatch, Effigy mutation, approval, merge, or
+  release; those provider/live steps require a separate explicit operator gate.
 - Keep ordinary validation network-free. Card `1105` may use its protected
   workflow for the named GitHub/GHCR mutations and exact read-back proof.
 - Effigy's one-time import commit remains historical byte-import evidence.
