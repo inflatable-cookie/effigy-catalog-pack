@@ -118,8 +118,14 @@ def live_provider_check() -> dict[str, Any]:
     require(selected_actions.get("github_owned_allowed") is False, "live Actions allow GitHub-owned actions")
     require(selected_actions.get("verified_allowed") is False, "live Actions allow verified actions")
     require(
-        selected_actions.get("patterns_allowed") == [f"actions/checkout@{CHECKOUT_ACTION_SHA}"],
-        "live Actions allow more than the pinned checkout action",
+        sorted(selected_actions.get("patterns_allowed", []))
+        == sorted(
+            [
+                f"actions/checkout@{CHECKOUT_ACTION_SHA}",
+                f"actions/attest@{ATTEST_ACTION_COMMIT}",
+            ]
+        ),
+        "live Actions allowlist differs from the pinned checkout and attest actions",
     )
     require(workflow_permissions.get("default_workflow_permissions") == "read", "live workflow permissions are not read-only")
     require(workflow_permissions.get("can_approve_pull_request_reviews") is False, "live workflows can approve pull requests")
