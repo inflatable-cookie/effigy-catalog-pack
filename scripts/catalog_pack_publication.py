@@ -29,12 +29,21 @@ def commit_created(commit: str) -> str:
         fail(f"source repository commit timestamp is invalid: {error}")
 
 
+def canonical_source_tag(source_tag: str, pack_version: str) -> str:
+    expected = f"v{pack_version}"
+    require(source_tag == expected, "source tag must be the canonical v<pack-version> spelling")
+    return expected
+
+
+def publication_concurrency_group(source_tag: str, pack_version: str) -> str:
+    return f"catalog-pack-publication-{canonical_source_tag(source_tag, pack_version)}"
+
+
 def actual_source_identity(source_tag: str, source_ref: str, pack_version: str) -> dict[str, str]:
     """Resolve and verify the annotated tag/ref pair supplied to publication."""
 
-    tag_name = source_tag.removeprefix("refs/tags/")
+    tag_name = canonical_source_tag(source_tag, pack_version)
     tag_ref = f"refs/tags/{tag_name}"
-    require(tag_name == f"v{pack_version}", "source tag does not match pack version")
     require(re.fullmatch(r"[0-9a-f]{40}", source_ref) is not None, "source ref must be a full commit")
     require(git_output(ROOT, ["cat-file", "-t", tag_ref]) == "tag", "source ref is not an annotated tag")
     tag_object = git_output(ROOT, ["rev-parse", f"{tag_ref}^{{tag}}"])

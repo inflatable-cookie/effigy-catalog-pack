@@ -70,27 +70,41 @@ def hosted_control_check() -> dict[str, Any]:
 
 def workflow_check() -> dict[str, Any]:
     workflow_root = ROOT / ".github" / "workflows"
-    expected = {"validate.yml", "publication-rehearsal.yml"}
+    expected = {"validate.yml", "publication.yml"}
     require(workflow_root.is_dir(), "workflow directory is missing")
     actual = {path.name for path in workflow_root.iterdir() if path.is_file()}
     require(actual == expected, f"workflow inventory is {sorted(actual)}, expected {sorted(expected)}")
 
-    forbidden = re.compile(
+    validate_forbidden = re.compile(
         r"(?:oras\s+push|git\s+push|git\s+tag|docker\s+login|gh\s+(?:api|release)|"
         r"contents\s*:\s*write|packages\s*:\s*write|id-token\s*:\s*write|"
-        r"attestations\s*:\s*write|actions/upload-artifact)",
+        r"attestations\s*:\s*write|actions/upload-artifact|--mutate)",
         re.IGNORECASE,
     )
+    publication_forbidden = re.compile(
+        r"(?:git\s+push|git\s+tag|docker\s+login|actions/upload-artifact|"
+        r"contents\s*:\s*write|pull_request:)",
+        re.IGNORECASE,
+    )
+    allowed_actions = {
+        "validate.yml": {f"actions/checkout@{CHECKOUT_ACTION_SHA}"},
+        "publication.yml": {
+            f"actions/checkout@{CHECKOUT_ACTION_SHA}",
+            f"actions/attest@{ATTEST_ACTION_COMMIT}",
+        },
+    }
     uses_pattern = re.compile(r"^\s*-?\s*uses:\s*([^\s#]+)", re.MULTILINE)
     action_pattern = re.compile(r"^[^@]+@([0-9a-f]{40})$")
     for path in sorted(workflow_root.iterdir()):
         if not path.is_file():
             continue
         contents = path.read_text()
-        require(not forbidden.search(contents), f"workflow contains a release mutation or broad permission: {path.name}")
-        require("permissions:" in contents and "contents: read" in contents, f"workflow lacks read-only permissions: {path.name}")
+        require("permissions:" in contents and "contents: read" in contents, f"workflow lacks contents: read: {path.name}")
+        permitted = allowed_actions.get(path.name)
+        require(permitted is not None, f"unexpected workflow file: {path.name}")
         for action in uses_pattern.findall(contents):
             require(action_pattern.match(action), f"workflow action is not pinned by full SHA: {path.name}: {action}")
+            require(action in permitted, f"workflow uses a disallowed action: {path.name}: {action}")
 
     def run_blocks(contents: str) -> list[str]:
         lines = contents.splitlines()
@@ -122,34 +136,67 @@ def workflow_check() -> dict[str, Any]:
         return any(expression.search(block) for block in run_blocks(contents))
 
     def require_no_raw_input_in_run(contents: str) -> None:
-        require(not has_raw_input_in_run(contents), "publication rehearsal interpolates a workflow input directly in run")
+        require(not has_raw_input_in_run(contents), "publication interpolates a workflow input directly in run")
 
     validation = (workflow_root / "validate.yml").read_text()
-    rehearsal = (workflow_root / "publication-rehearsal.yml").read_text()
+    publication = (workflow_root / "publication.yml").read_text()
+    require(not validate_forbidden.search(validation), "validate workflow contains a release mutation or write permission")
+    require(not publication_forbidden.search(publication), "publication workflow contains a forbidden mutation")
     require("pull_request:" in validation, "validate workflow must run for pull requests")
-    require(f"ref: {IMPORT_AUTHORITY_COMMIT}" in validation, "validate workflow must pin the Effigy support checkout")
+    require(f"ref: {IMPORT_AUTHORITY_COMMIT}" not in validation, "validate workflow must not pin support to the import commit")
+    require("ref: main" in validation, "validate workflow must check out Effigy's current default branch")
+    require("repository: inflatable-cookie/effigy" in validation, "validate workflow must check out the Effigy support repository")
     require("--import-proof" not in validation, "validate workflow must not make Effigy the ongoing pack byte authority")
-    require("--require-authority" in validation, "validate workflow must verify the pinned Effigy support policy")
-    require("workflow_dispatch:" in rehearsal, "publication rehearsal must be manual")
-    require("catalog-pack-publication-rehearsal" in rehearsal, "publication rehearsal must name its protected environment")
-    require(f"ref: {IMPORT_AUTHORITY_COMMIT}" in rehearsal, "publication rehearsal must pin the Effigy support checkout")
+    require("--require-authority" in validation, "validate workflow must verify the current Effigy support policy")
+    require("publication-check" in validation, "validate workflow must run the network-free publication transaction proof")
+    require("workflow_dispatch:" in publication, "publication must be manual")
+    on_section, _, jobs_section = publication.partition("jobs:")
+    require("pull_request:" not in on_section, "publication must not run on pull_request")
+    require(re.search(r"(?m)^  push:", on_section) is None, "publication must not run on push")
+    require("push-to-registry:" in jobs_section, "finalize must push attestation to the registry")
+    require("catalog-pack-publication-rehearsal" in publication, "publication must name its protected environment")
+    require("group: catalog-pack-publication-${{ inputs.source_tag }}" in publication, "publication must serialize by source tag")
+    require("not refs/tags/v1.0.0" in publication, "publication must reject the refs/tags source-tag alias")
+    require("cancel-in-progress: false" in publication, "publication must not cancel an in-progress version")
+    require("GITHUB_TOKEN: ${{ github.token }}" in publication, "publication must export github.token as GITHUB_TOKEN")
+    require("GH_TOKEN: ${{ github.token }}" in publication, "publication must export github.token as GH_TOKEN")
     require(
-        "source_tag:" in rehearsal and "source_ref:" in rehearsal,
-        "publication rehearsal must accept source tag and peeled commit inputs",
+        f"GITHUB_ENVIRONMENT: {PUBLICATION_ENVIRONMENT}" in publication,
+        "publication must set GITHUB_ENVIRONMENT explicitly",
+    )
+    require("needs: publish" in publication, "finalize must wait for publish")
+    require("--phase version" in publication, "publication must dispatch the version phase")
+    require("--phase finalize-preflight" in publication, "publication must dispatch finalize-preflight")
+    require("--phase finalize" in publication, "publication must dispatch the finalize phase")
+    require(f"actions/attest@{ATTEST_ACTION_COMMIT}" in publication, "finalize must use pinned actions/attest")
+    require("package settings" in publication, "publication must document the operator visibility checkpoint")
+    require("users/inflatable-cookie/packages" not in publication, "publication still uses the user package route")
+    require("PATCH" not in publication, "publication workflow still PATCHes package visibility")
+    require("dist/index.js" not in publication, "publication still executes actions/attest out of band")
+    require("ref: main" in publication, "publication must check out Effigy's current default branch")
+    require(f"ref: {IMPORT_AUTHORITY_COMMIT}" not in publication, "publication must not pin support to the import commit")
+    require("packages: write" in publication, "publication must grant packages: write")
+    require("id-token: write" in publication, "publication must grant id-token: write")
+    require("attestations: write" in publication, "publication must grant attestations: write")
+    require("CATALOG_PACK_PUBLICATION_MUTATE: \"1\"" in publication, "publication must set the mutate gate")
+    require("--mutate" in publication, "publication must pass --mutate only in the protected job")
+    require(
+        "source_tag:" in publication and "source_ref:" in publication,
+        "publication must accept source tag and peeled commit inputs",
     )
     require(
-        "inputs.source_tag" in rehearsal and "inputs.source_ref" in rehearsal,
-        "publication rehearsal must use its source identity inputs",
+        "inputs.source_tag" in publication and "inputs.source_ref" in publication,
+        "publication must use its source identity inputs",
     )
     require(
-        "--source-tag" in rehearsal and "--source-ref" in rehearsal,
-        "publication rehearsal must pass source identity inputs",
+        "--source-tag" in publication and "--source-ref" in publication,
+        "publication must pass source identity inputs",
     )
-    require("SOURCE_TAG: ${{ inputs.source_tag }}" in rehearsal, "publication rehearsal must bind source_tag through step env")
-    require("SOURCE_REF: ${{ inputs.source_ref }}" in rehearsal, "publication rehearsal must bind source_ref through step env")
-    require('--source-tag "$SOURCE_TAG"' in rehearsal, "publication rehearsal must quote the source_tag shell variable")
-    require('--source-ref "$SOURCE_REF"' in rehearsal, "publication rehearsal must quote the source_ref shell variable")
-    require_no_raw_input_in_run(rehearsal)
+    require("SOURCE_TAG: ${{ inputs.source_tag }}" in publication, "publication must bind source_tag through step env")
+    require("SOURCE_REF: ${{ inputs.source_ref }}" in publication, "publication must bind source_ref through step env")
+    require('--source-tag "$SOURCE_TAG"' in publication, "publication must quote the source_tag shell variable")
+    require('--source-ref "$SOURCE_REF"' in publication, "publication must quote the source_ref shell variable")
+    require_no_raw_input_in_run(publication)
 
     injection_counterexample = """
       - name: Input injection counterexample
@@ -167,7 +214,11 @@ def workflow_check() -> dict[str, Any]:
     return {
         "workflow_files": sorted(expected),
         "actions_sha_pinned": True,
-        "release_mutations": False,
+        "validate_checkout_only": True,
+        "publication_pinned_attest": True,
+        "validate_read_only": True,
+        "publication_write_scoped": True,
+        "release_mutations_in_validate": False,
         "workflow_input_shell_guard": True,
         "hosted_controls": hosted,
     }

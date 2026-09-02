@@ -2,10 +2,11 @@
 """Network-free foundation checks for the Effigy catalog pack.
 
 The repository deliberately keeps the release input in one place: ``pack/``.
-The repository checks its pack tree independently, consumes the pinned Effigy
-support policy, and exposes a separate one-time import proof. It also computes
-the pack content identity, builds a deterministic OCI layout, and simulates
-immutable publication decisions without contacting a registry.
+The repository checks its pack tree independently, consumes Effigy's current
+default-branch support policy, and exposes a separate one-time import proof. It
+also computes the pack content identity, builds a deterministic OCI layout, and
+models the protected publication transaction without contacting a registry in
+ordinary QA.
 """
 
 from __future__ import annotations
@@ -138,7 +139,17 @@ FOUNDATION_PACK_ID = "effigy-default-catalog"
 FOUNDATION_PACK_CONTENT_ID = "sha256:511d120f181505f8ecced7687b564c4663663eca8f6f68b2b562c9b676feb29e"
 SOURCE_URL = "https://github.com/inflatable-cookie/effigy-catalog-pack"
 OCI_REPOSITORY = "ghcr.io/inflatable-cookie/effigy-catalog-pack"
+PACK_GITHUB_REPOSITORY = "inflatable-cookie/effigy-catalog-pack"
+EFFIGY_GITHUB_REPOSITORY = "inflatable-cookie/effigy"
+PUBLICATION_ENVIRONMENT = "catalog-pack-publication-rehearsal"
+PUBLICATION_MUTATE_ENV = "CATALOG_PACK_PUBLICATION_MUTATE"
+STABLE_TAG = "stable"
 CHECKOUT_ACTION_SHA = "3d3c42e5aac5ba805825da76410c181273ba90b1"
+ATTEST_ACTION_COMMIT = "1e69f48acb82d1966a394da916b4c1698aa569d6"
+PACKAGE_METADATA_PATH = "orgs/inflatable-cookie/packages/container/effigy-catalog-pack"
+ORAS_VERSION = "1.3.3"
+ORAS_LINUX_AMD64_SHA256 = "9ce999f8d2de03fc03968b29d743077a58783e545e5eaa53917ca177352d0e59"
+SLSA_PROVENANCE_PREDICATE = "https://slsa.dev/provenance/v1"
 
 OCI_LAYOUT_VERSION = "1.0.0"
 OCI_INDEX_MEDIA_TYPE = "application/vnd.oci.image.index.v1+json"
