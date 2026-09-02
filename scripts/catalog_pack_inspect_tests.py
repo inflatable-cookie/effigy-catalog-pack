@@ -2,20 +2,57 @@
 
 from __future__ import annotations
 
+from catalog_pack_inspect import require_verified_attestation_json
 from catalog_pack_live import classify_registry_inspect
 from catalog_pack_live_tests import ScriptedRunner, _binary, _live, _proc, _when
 from catalog_pack_shared import *
+
+
+def _statement_payload(digest_map: dict[str, str]) -> str:
+    return json.dumps(
+        [
+            {
+                "verificationResult": {
+                    "statement": {
+                        "subject": [
+                            {
+                                "name": OCI_REPOSITORY,
+                                "digest": digest_map,
+                            }
+                        ]
+                    }
+                }
+            }
+        ]
+    )
 
 
 def classify_inspect_proof() -> dict[str, Any]:
     require(classify_registry_inspect(0, '{"digest":"sha256:abc"}', "") == "present", "zero status was not present")
     require(
         classify_registry_inspect(1, "", "Error: failed to fetch descriptor: not found") == "absent",
-        "not-found was not classified absent",
+        "ORAS descriptor miss was not classified absent",
+    )
+    require(
+        classify_registry_inspect(
+            1,
+            "",
+            "Error: failed to fetch descriptor: ghcr.io/inflatable-cookie/effigy-catalog-pack:stable: not found",
+        )
+        == "absent",
+        "ORAS reference descriptor miss was not classified absent",
     )
     require(
         classify_registry_inspect(1, "", "Error: manifest unknown") == "absent",
         "manifest unknown was not classified absent",
+    )
+    require(
+        classify_registry_inspect(1, "", "Error: name unknown: ghcr.io/inflatable-cookie/effigy-catalog-pack") == "absent",
+        "name unknown was not classified absent",
+    )
+    require(
+        classify_registry_inspect(1, "", "Error: 404 Not Found") == "absent",
+        "HTTP 404 was not classified absent",
     )
     require(
         classify_registry_inspect(1, "", "Error: unauthorized: authentication required") == "error",
@@ -45,12 +82,37 @@ def classify_inspect_proof() -> dict[str, Any]:
         classify_registry_inspect(1, "", "oras: command not found") == "error",
         "missing oras binary was treated as registry absence",
     )
+    require(
+        classify_registry_inspect(1, "", "Error: credential store: not found") == "error",
+        "credential-store miss was treated as registry absence",
+    )
     return {"registry_miss_absent": True, "auth_and_network_fail_closed": True, "local_not_found_fail_closed": True}
 
 
 def verify_attestation_proof() -> dict[str, Any]:
     digest = "sha256:" + "a" * 64
-    verified = json.dumps([{"verificationResult": {"isValid": True, "digest": digest}}])
+    digest_hex = "a" * 64
+    verified = _statement_payload({"sha256": digest_hex})
+    require_verified_attestation_json(verified, digest)
+
+    def expect_failure(payload: str, needle: str, label: str) -> None:
+        try:
+            require_verified_attestation_json(payload, digest)
+        except CheckFailure as error:
+            require(needle in str(error), f"{label}: {error}")
+        else:
+            fail(f"{label} was accepted")
+
+    expect_failure(_statement_payload({"sha512": digest_hex}), "has no subject digest sha256:", "wrong-algorithm subject")
+    expect_failure(_statement_payload({"sha256": "f" * 64}), "has no subject digest sha256:", "wrong-hex subject")
+    expect_failure(
+        json.dumps([{"verificationResult": {"isValid": True, "digest": digest}}]),
+        "lacks verificationResult.statement",
+        "invented digest field",
+    )
+    expect_failure("[]", "returned no attestations", "empty JSON array")
+    expect_failure("No attestations found", "did not return JSON", "zero-exit no-match text")
+    expect_failure("{}", "is not an array", "object-shape JSON")
 
     def attestation_verify(call: dict[str, Any]) -> bool:
         return _binary(call, "gh") and "attestation" in call["argv"] and "verify" in call["argv"]
@@ -105,4 +167,11 @@ def verify_attestation_proof() -> dict[str, Any]:
         require("did not verify" in str(error), str(error))
     else:
         fail("nonzero attestation verify was accepted")
-    return {"structured_json_required": True, "zero_exit_no_match_rejected": True, "nonzero_rejected": True}
+    return {
+        "structured_json_required": True,
+        "statement_subject_digest_map": True,
+        "wrong_algorithm_rejected": True,
+        "wrong_hex_rejected": True,
+        "zero_exit_no_match_rejected": True,
+        "nonzero_rejected": True,
+    }

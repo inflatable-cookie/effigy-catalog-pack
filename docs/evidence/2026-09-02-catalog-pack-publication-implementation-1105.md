@@ -62,11 +62,13 @@ In-memory transaction proof plus injected command-runner tests established:
 6. one `stable` move when the prior channel is absent; when a previous digest
    exists, live retag is candidate then previous then candidate
 7. fail-closed inspect for auth/timeout/server errors and local
-   credential/tool "not found"; only a registry miss is absence
+   credential/tool misses, including `credential store: not found`; only 404,
+   manifest-unknown, name-unknown, or an ORAS descriptor miss is absence
 8. concurrency keyed by the canonical `v<pack-version>` source-tag spelling;
    `refs/tags/v1.0.0` is rejected so it cannot open a parallel mutation lane
-9. structured `gh attestation verify --format json` with a non-empty result;
-   zero-exit/no-match is rejected
+9. structured `gh attestation verify --format json` parsed from
+   `verificationResult.statement.subject` digest maps; empty, non-JSON,
+   wrong-algorithm, and wrong-hex results are rejected
 10. version pointer rechecked immediately before any `stable` write
 
 Different-digest collision, stale support, private package, and unattested
