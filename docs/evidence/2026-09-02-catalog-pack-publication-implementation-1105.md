@@ -39,7 +39,9 @@ serializes two jobs on the source tag with `cancel-in-progress: false`.
 - `finalize` waits for that checkpoint, GET-verifies org package public
   linkage, attaches provenance with pinned `actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6`,
   pulls anonymously, fetches/rechecks Effigy support and releases, then moves
-  `stable` once. Live retag rollback runs only when a previous digest exists.
+  `stable`. An absent first-publication `stable` moves once. When a previous
+  digest exists, finalization retags candidate → previous → candidate. Live
+  retag rollback never deletes a manifest.
 
 Both jobs export `GITHUB_TOKEN`/`GH_TOKEN` from `${{ github.token }}` and set
 `GITHUB_ENVIRONMENT` explicitly. Selected-actions provider policy is unchanged
@@ -57,10 +59,15 @@ In-memory transaction proof plus injected command-runner tests established:
 3. pinned `actions/attest` in the finalizer
 4. anonymous exact-byte pull
 5. remote Effigy support/release recheck immediately before `stable`
-6. one `stable` move when the prior channel is absent; live retag only when a
-   previous digest exists
-7. fail-closed inspect for auth/timeout/server errors
-8. concurrency and token/environment wiring in the workflow YAML
+6. one `stable` move when the prior channel is absent; when a previous digest
+   exists, live retag is candidate then previous then candidate
+7. fail-closed inspect for auth/timeout/server errors and local
+   credential/tool "not found"; only a registry miss is absence
+8. concurrency keyed by the canonical `v<pack-version>` source-tag spelling;
+   `refs/tags/v1.0.0` is rejected so it cannot open a parallel mutation lane
+9. structured `gh attestation verify --format json` with a non-empty result;
+   zero-exit/no-match is rejected
+10. version pointer rechecked immediately before any `stable` write
 
 Different-digest collision, stale support, private package, and unattested
 subject all stop before `stable`. Same-digest version retry does not overwrite.

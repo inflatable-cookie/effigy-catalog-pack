@@ -48,16 +48,17 @@ The two workflows stay narrow:
 
 - `validate.yml` runs read-only checks for pull requests and `main` pushes. It
   checks out Effigy `main` for current support and never passes `--mutate`.
-- `publication.yml` is manual, accepts only an existing annotated source tag
-  plus its full peeled commit, and names the protected
-  `catalog-pack-publication-rehearsal` environment. It serializes `publish` then
-  `finalize` by source tag, exports `GITHUB_TOKEN`/`GH_TOKEN` from
-  `${{ github.token }}`, and sets `GITHUB_ENVIRONMENT` explicitly. `publish`
-  may write the version package; `finalize` also has `id-token` and
-  `attestations` write and is the only job that uses pinned `actions/attest`.
-  It is the only workflow that may set `CATALOG_PACK_PUBLICATION_MUTATE=1` and
-  pass `--mutate`. `workflow-check` still rejects raw `inputs.*` expressions in
-  `run:` blocks and tests a malicious counterexample.
+- `publication.yml` is manual, accepts only the canonical annotated source tag
+  `v<pack-version>` (not `refs/tags/v…`) plus its full peeled commit, and names
+  the protected `catalog-pack-publication-rehearsal` environment. It serializes
+  `publish` then `finalize` by that canonical source tag, exports
+  `GITHUB_TOKEN`/`GH_TOKEN` from `${{ github.token }}`, and sets
+  `GITHUB_ENVIRONMENT` explicitly. `publish` may write the version package;
+  `finalize` also has `id-token` and `attestations` write and is the only job
+  that uses pinned `actions/attest`. It is the only workflow that may set
+  `CATALOG_PACK_PUBLICATION_MUTATE=1` and pass `--mutate`. `workflow-check`
+  still rejects raw `inputs.*` expressions in `run:` blocks and tests a
+  malicious counterexample.
 - `docs/evidence/hosted-controls.json` is a checked-in static provider
   snapshot consumed by the network-free `workflow-check`; it is not a claim
   that the provider still has those settings or that a hosted run passed.

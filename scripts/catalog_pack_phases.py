@@ -61,6 +61,16 @@ def forbid_finalize_writes(adapter: Any, *, allow_stable: bool) -> None:
         require("stable" not in kinds, "stable moved before the finalize phase")
 
 
+def require_version_pointer(adapter: Any, tag: str, digest: str, when: str) -> None:
+    observed = adapter.inspect_version(tag)
+    require(observed == digest, f"version pointer drifted {when}")
+
+
+def move_stable(adapter: Any, digest: str, tag: str, version_digest: str, when: str) -> None:
+    require_version_pointer(adapter, tag, version_digest, f"before {when}")
+    adapter.tag_digest(digest, STABLE_TAG)
+
+
 def phase_version(
     *,
     adapter: Any,
@@ -142,14 +152,19 @@ def phase_finalize(
 
         recorded_previous = adapter.inspect_stable()
         require(recorded_previous == previous_stable, "stable changed before the authorized move")
+        require_version_pointer(adapter, tag, digest, "before stable write")
         if recorded_previous is None:
-            adapter.tag_digest(digest, STABLE_TAG)
+            move_stable(adapter, digest, tag, digest, "absent stable move")
         elif recorded_previous != digest:
-            adapter.tag_digest(recorded_previous, STABLE_TAG)
+            move_stable(adapter, digest, tag, digest, "candidate promotion")
+            require(adapter.inspect_stable() == digest, "retag did not promote the candidate")
+            require_version_pointer(adapter, tag, digest, "after candidate promotion")
+            move_stable(adapter, recorded_previous, tag, digest, "previous-target rollback")
             require(adapter.inspect_stable() == recorded_previous, "rollback did not restore the previous stable digest")
-            adapter.tag_digest(digest, STABLE_TAG)
+            require_version_pointer(adapter, tag, digest, "after previous-target rollback")
+            move_stable(adapter, digest, tag, digest, "candidate restore")
         require(adapter.inspect_stable() == digest, "stable does not resolve to the candidate digest")
-        require(adapter.inspect_version(tag) == digest, "stable move changed the version pointer")
+        require_version_pointer(adapter, tag, digest, "after stable move")
         report["gates"].append("stable")
         report["rollback_exercised"] = recorded_previous is not None and recorded_previous != digest
         report["absent_stable_recorded"] = recorded_previous is None
@@ -161,7 +176,12 @@ def phase_finalize(
         require(kinds.count("stable") == 1, "absent first-publication stable must move once")
         require("stable-rollback" not in kinds, "absent stable used a delete rollback")
     elif recorded_previous != digest:
-        require(kinds.count("stable") == 2, "live retag rollback must restore previous then candidate")
+        require(kinds.count("stable") == 3, "live retag rollback must promote, restore previous, then restore candidate")
+        stable_digests = [value for kind, value in writes if kind == "stable"]
+        require(
+            stable_digests == [digest, recorded_previous, digest],
+            "live retag rollback was not candidate then previous then candidate",
+        )
     require(adapter.inspect_version(tag) == digest, "finalize changed the version pointer")
     report["writes"] = writes
     report["stable_digest"] = digest

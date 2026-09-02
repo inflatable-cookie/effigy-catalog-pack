@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from catalog_pack_live import LiveRegistry, classify_registry_inspect
+from catalog_pack_live import LiveRegistry
 from catalog_pack_shared import *
 
 
@@ -80,39 +80,6 @@ def _live(runner: ScriptedRunner) -> LiveRegistry:
         runner=runner,
         which=lambda name: f"/usr/bin/{name}",
     )
-
-
-def classify_inspect_proof() -> dict[str, Any]:
-    require(classify_registry_inspect(0, '{"digest":"sha256:abc"}', "") == "present", "zero status was not present")
-    require(
-        classify_registry_inspect(1, "", "Error: failed to fetch descriptor: not found") == "absent",
-        "not-found was not classified absent",
-    )
-    require(
-        classify_registry_inspect(1, "", "Error: manifest unknown") == "absent",
-        "manifest unknown was not classified absent",
-    )
-    require(
-        classify_registry_inspect(1, "", "Error: unauthorized: authentication required") == "error",
-        "unauthorized was not classified as failure",
-    )
-    require(
-        classify_registry_inspect(1, "", "denied: 401 Unauthorized") == "error",
-        "HTTP 401 was not classified as failure",
-    )
-    require(
-        classify_registry_inspect(1, "", "Error: context deadline exceeded") == "error",
-        "timeout was treated as absent",
-    )
-    require(
-        classify_registry_inspect(1, "", "dial tcp: connection refused") == "error",
-        "network failure was treated as absent",
-    )
-    require(
-        classify_registry_inspect(1, "", "unauthorized: requested access to the resource is denied: 404") == "error",
-        "auth failure with 404 was treated as absent",
-    )
-    return {"not_found_absent": True, "auth_and_network_fail_closed": True}
 
 
 def inspect_runner_proof() -> dict[str, Any]:
@@ -240,13 +207,37 @@ def workflow_wiring_proof() -> dict[str, Any]:
     require("push-to-registry: true" in publication, "pinned attest action does not push to the registry")
     require("dist/index.js" not in publication, "publication still executes actions/attest out of band")
     require("package settings" in publication, "publication does not document the operator visibility checkpoint")
+    require("not refs/tags/v1.0.0" in publication, "publication does not name the canonical source-tag spelling")
     require(
         hosted["actions"]["selected_actions"]["patterns_allowed"]
         == [f"actions/checkout@{CHECKOUT_ACTION_SHA}"],
         "this PR changed selected-actions provider policy",
     )
+    from catalog_pack_publication import actual_source_identity, publication_concurrency_group
+
+    require(
+        publication_concurrency_group("v1.0.0", "1.0.0") == "catalog-pack-publication-v1.0.0",
+        "canonical concurrency key drifted",
+    )
+    try:
+        publication_concurrency_group("refs/tags/v1.0.0", "1.0.0")
+    except CheckFailure as error:
+        require("canonical" in str(error), str(error))
+    else:
+        fail("refs/tags alias was accepted as a concurrency key")
+    try:
+        actual_source_identity("refs/tags/v1.0.0", "a" * 40, "1.0.0")
+    except CheckFailure as error:
+        require("canonical" in str(error), str(error))
+    else:
+        fail("refs/tags alias was accepted as source identity")
+    require(
+        "catalog-pack-publication-refs/tags/v1.0.0" != publication_concurrency_group("v1.0.0", "1.0.0"),
+        "raw alias would not have been a distinct mutation lane",
+    )
     return {
         "concurrency_keyed_by_source_tag": True,
+        "canonical_source_tag_only": True,
         "token_and_environment_exported": True,
         "finalize_uses_pinned_attest": True,
         "selected_actions_unchanged": True,
@@ -254,10 +245,13 @@ def workflow_wiring_proof() -> dict[str, Any]:
 
 
 def live_seam_proof() -> dict[str, Any]:
+    from catalog_pack_inspect_tests import classify_inspect_proof, verify_attestation_proof
+
     return {
         "classify": classify_inspect_proof(),
         "inspect": inspect_runner_proof(),
         "package_and_stable": package_and_stable_runner_proof(),
+        "attestation": verify_attestation_proof(),
         "workflow": workflow_wiring_proof(),
         "network_free": True,
     }

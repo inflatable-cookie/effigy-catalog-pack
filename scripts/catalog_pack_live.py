@@ -4,40 +4,11 @@ from __future__ import annotations
 
 from typing import Any, Callable, Mapping
 
+from catalog_pack_inspect import classify_registry_inspect, require_verified_attestation_json
 from catalog_pack_registry import require_live_mutation_gate
 from catalog_pack_shared import *
 
 CommandRunner = Callable[..., subprocess.CompletedProcess[bytes]]
-
-_AUTH_MARKERS = (
-    "unauthorized",
-    "authentication required",
-    "access denied",
-    "permission denied",
-    "forbidden",
-)
-_ABSENT_MARKERS = (
-    "not found",
-    "notfound",
-    "manifest unknown",
-    "name unknown",
-    "unknown to registry",
-)
-_AUTH_STATUS = re.compile(r"\b(401|403)\b")
-_ABSENT_STATUS = re.compile(r"\b404\b")
-
-
-def classify_registry_inspect(returncode: int, stdout: str, stderr: str) -> str:
-    """Classify a remote inspect. Only a proved not-found is absent; everything else fails closed."""
-
-    if returncode == 0:
-        return "present"
-    text = f"{stderr}\n{stdout}".lower()
-    if any(marker in text for marker in _AUTH_MARKERS) or _AUTH_STATUS.search(text):
-        return "error"
-    if any(marker in text for marker in _ABSENT_MARKERS) or _ABSENT_STATUS.search(text):
-        return "absent"
-    return "error"
 
 
 def default_command_runner(
@@ -153,6 +124,8 @@ class LiveRegistry:
                 PACK_GITHUB_REPOSITORY,
                 "--predicate-type",
                 SLSA_PROVENANCE_PREDICATE,
+                "--format",
+                "json",
             ],
             check=False,
             env=self._auth_env(),
@@ -165,6 +138,7 @@ class LiveRegistry:
             )
             detail = decode_output(result.stderr) or decode_output(listed.stderr)
             fail(f"digest-bound attestation did not verify for {digest}: {detail}")
+        require_verified_attestation_json(decode_output(result.stdout), digest)
 
     def anonymous_pull(self, digest: str, destination: Path) -> None:
         destination.mkdir(parents=True, exist_ok=True)

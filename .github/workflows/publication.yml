@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       source_tag:
-        description: Existing annotated source tag matching the pack version
+        description: Canonical annotated source tag (v1.0.0, not refs/tags/v1.0.0)
         required: true
         type: string
       source_ref:

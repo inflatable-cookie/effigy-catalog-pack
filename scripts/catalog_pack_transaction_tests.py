@@ -177,19 +177,9 @@ def publication_transaction_proof() -> dict[str, Any]:
         fail("unattested subject was allowed to continue")
     require("stable" not in [kind for kind, _ in unattested.writes], "unattested subject moved stable")
 
-    previous = "sha256:" + "e" * 64
-    retag = FakeRegistry(
-        version_digest=created["candidate_digest"],
-        stable_digest=previous,
-        visibility="public",
-        repository=PACK_GITHUB_REPOSITORY,
-        attested={created["candidate_digest"]},
-    )
-    moved = _run(retag, "finalize", expected_support=created["support"])
-    require(moved["rollback_exercised"] is True, "existing stable skipped live retag rollback")
-    require([kind for kind, _ in retag.writes] == ["stable", "stable"], "retag rollback write set drifted")
-    require(retag.inspect_stable() == created["candidate_digest"], "retag rollback did not restore the candidate")
-    require(retag.inspect_version("v1.0.0") == created["candidate_digest"], "retag rollback moved the version pointer")
+    from catalog_pack_rollback_tests import retag_and_drift_proof
+
+    retag = retag_and_drift_proof(created, _run)
 
     planned = run_publication(
         authority=None,
@@ -231,7 +221,10 @@ def publication_transaction_proof() -> dict[str, Any]:
         "live_gate_fail_closed": True,
         "absent_stable_moves_once": True,
         "live_retag_when_previous_exists": True,
+        "retag_candidate_previous_candidate": True,
+        "version_drift_before_stable": True,
         "candidate_digest": created["candidate_digest"],
         "write_order": kinds,
         **model,
+        **retag,
     }
