@@ -61,7 +61,8 @@ def immutable_artifact_input_proof() -> dict[str, Any]:
         root = Path(temporary)
         layout = root / "layout"
         artifact = root / "artifact"
-        identity = planned_source_identity(validate_pack_tree()["pack_version"])
+        pack_version = validate_pack_tree()["pack_version"]
+        identity = planned_source_identity(pack_version)
         built = build_oci_layout(layout, PACK_ROOT, identity)
         materialize_oci_layers(layout, artifact)
         _manifest, manifest_bytes, _ = read_layout_manifest(layout)
@@ -76,8 +77,12 @@ def immutable_artifact_input_proof() -> dict[str, Any]:
         require(report["manifest_digest_verified"] is True, "manifest bytes were not hash-bound")
         require(report["descriptor_size_verified"] is True, "manifest bytes were not descriptor-size-bound")
 
-        changed_manifest_bytes = manifest_bytes.replace(b"v1.0.1", b"v1.0.2", 1)
+        tag = f"v{pack_version}"
+        require(tag.encode() in manifest_bytes, "OCI manifest does not carry the pack tag")
+        tampered_tag = "x" + tag[1:]
+        changed_manifest_bytes = manifest_bytes.replace(tag.encode(), tampered_tag.encode(), 1)
         require(len(changed_manifest_bytes) == len(manifest_bytes), "manifest-change counterexample changed descriptor size")
+        require(changed_manifest_bytes != manifest_bytes, "manifest-change counterexample did not change bytes")
         manifest_path.write_bytes(changed_manifest_bytes)
         _expect_failure(
             lambda: verify_pulled_artifact(artifact, manifest_path, built["manifest_digest"], descriptor_path),
