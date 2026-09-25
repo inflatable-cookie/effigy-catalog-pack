@@ -150,6 +150,42 @@ catalog = "postgres"
         require(compose.is_file(), "Effigy did not eject a representative compose assembly")
         compose_text = compose.read_text(encoding="utf-8")
         require("workspace" in compose_text and "postgres" in compose_text, "ejected compose lost representative services")
+        require(
+            "BROWSER_RUNTIME: none" in compose_text,
+            "default workspace assembly must keep the browser runtime off",
+        )
+        ejected_dockerfile = repo / "infra" / "dev" / "catalog" / "workspace" / "Dockerfile"
+        require(ejected_dockerfile.is_file(), "ejected assembly lost the workspace Dockerfile")
+        ejected_text = ejected_dockerfile.read_text(encoding="utf-8")
+        require("ARG BROWSER_RUNTIME=none" in ejected_text, "ejected Dockerfile must default BROWSER_RUNTIME to none")
+        require(
+            'case "${BROWSER_RUNTIME}" in' in ejected_text,
+            "ejected Dockerfile must use the bounded browser-runtime branch",
+        )
+
+        # Opt-in proof: the declared parameter must reach the consumer build arg.
+        (repo / "effigy.toml").write_text(
+            """[containers]
+default = "stack"
+
+[containers.stack]
+primary_service = "workspace"
+
+[containers.stack.services.workspace]
+catalog = "workspace-rust-bun"
+browser_runtime = "chromium"
+
+[containers.stack.services.postgres]
+catalog = "postgres"
+""",
+            encoding="utf-8",
+        )
+        run_effigy(command, ["container", "stack", "eject", "--repo", str(repo)], repo, environment)
+        opt_in_compose = compose.read_text(encoding="utf-8")
+        require(
+            "BROWSER_RUNTIME: chromium" in opt_in_compose,
+            "browser_runtime = chromium must reach the consumer build arg",
+        )
 
         return {
             "binary": "cargo source build" if command[0] == "cargo" else command[0],
@@ -157,5 +193,7 @@ catalog = "postgres"
             "service_list_fragments": len(fragments),
             "workspace_extract": "ok",
             "representative_assembly": "ok",
+            "browser_runtime_default": "none",
+            "browser_runtime_opt_in": "chromium",
             "eject_output": eject_output.splitlines()[-1] if eject_output else "ok",
         }
