@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from catalog_pack_authority import prove_import, prove_support
+from catalog_pack_authority import prove_import_authority, prove_support
 from catalog_pack_constants import IMPORT_AUTHORITY_COMMIT
 from catalog_pack_registry import require_live_mutation_gate
 from catalog_pack_shared import *
@@ -33,15 +33,18 @@ def support_import_split_proof(authority: Path | None, require_authority: bool) 
             "import_commit": IMPORT_AUTHORITY_COMMIT,
             "support_blob_oid": support["support_blob_oid"],
         }
-    imported = prove_import(authority)
-    require(imported["authority_commit"] == IMPORT_AUTHORITY_COMMIT, "import proof lost the immutable import commit")
+    # The one-time import byte-equality proof is deliberately not part of the
+    # routine path: the editable pack is expected to evolve. Prove only the
+    # immutable Effigy-side import identity and the distinct current support.
+    imported = prove_import_authority(authority)
+    require(imported["authority_commit"] == IMPORT_AUTHORITY_COMMIT, "import authority lost the immutable import commit")
     require(
         imported["current_support_commit"] == support["support_commit"],
-        "import proof did not observe the current default-branch support commit",
+        "import authority did not observe the current default-branch support commit",
     )
     return {
         "distinct": True,
-        "import_proof": "checked",
+        "import_proof": "identity-checked",
         "support_commit": support["support_commit"],
         "import_commit": imported["authority_commit"],
         "support_blob_oid": support["support_blob_oid"],

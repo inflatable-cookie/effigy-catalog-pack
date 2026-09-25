@@ -67,8 +67,13 @@ def prove_support(authority: Path | None, require_authority: bool) -> dict[str, 
     return prove_current_support(authority, require_authority)
 
 
-def prove_import(authority: Path | None) -> dict[str, Any]:
-    """Prove the immutable foundation import. Current Effigy HEAD may be later."""
+def prove_import_authority(authority: Path | None) -> dict[str, Any]:
+    """Prove Effigy's immutable import commit/tree/blob evidence alone.
+
+    This half never compares the editable pack source, so it stays valid after
+    the pack evolves. ``prove_import`` adds the exact one-time snapshot equality
+    on top.
+    """
 
     require(authority is not None, "Effigy authority checkout is required for the import proof")
     require(
@@ -82,7 +87,22 @@ def prove_import(authority: Path | None) -> dict[str, Any]:
     )
     tree = git_output(authority, ["rev-parse", f"{IMPORT_AUTHORITY_COMMIT}:{SOURCE_CATALOG_RELATIVE.as_posix()}"])
     require(tree == IMPORT_AUTHORITY_TREE, f"Effigy catalog tree is {tree}, expected {IMPORT_AUTHORITY_TREE}")
+    support_oid = git_output(authority, ["rev-parse", f"{IMPORT_AUTHORITY_COMMIT}:{SUPPORT_RELATIVE.as_posix()}"])
+    require(support_oid == IMPORT_SUPPORT_BLOB, f"import-era support blob is {support_oid}, expected {IMPORT_SUPPORT_BLOB}")
+    return {
+        "import_checked": True,
+        "authority_commit": IMPORT_AUTHORITY_COMMIT,
+        "catalog_tree": IMPORT_AUTHORITY_TREE,
+        "support_blob_oid": IMPORT_SUPPORT_BLOB,
+        "source_file_count": len(SOURCE_FILES),
+        "current_support_commit": resolve_support_commit(authority),
+    }
 
+
+def prove_import(authority: Path | None) -> dict[str, Any]:
+    """Prove the current pack still equals the one-time foundation import."""
+
+    result = prove_import_authority(authority)
     pack_files, _ = collect_tree(PACK_ROOT)
     require(
         pack_files == sorted(PACK_FILES),
@@ -103,15 +123,9 @@ def prove_import(authority: Path | None) -> dict[str, Any]:
         pack_facts["content_id"] == PACK_CONTENT_ID,
         f"pack content identity changed: {pack_facts['content_id']}",
     )
-    support_oid = git_output(authority, ["rev-parse", f"{IMPORT_AUTHORITY_COMMIT}:{SUPPORT_RELATIVE.as_posix()}"])
-    require(support_oid == IMPORT_SUPPORT_BLOB, f"import-era support blob is {support_oid}, expected {IMPORT_SUPPORT_BLOB}")
-    return {
-        "import_checked": True,
-        "authority_commit": IMPORT_AUTHORITY_COMMIT,
-        "catalog_tree": IMPORT_AUTHORITY_TREE,
-        "support_blob_oid": IMPORT_SUPPORT_BLOB,
-        "source_file_count": len(SOURCE_FILES),
-        "source_byte_count": sum(len(git_bytes(authority, ["show", f"{IMPORT_AUTHORITY_COMMIT}:{(SOURCE_CATALOG_RELATIVE / relative).as_posix()}"])) for relative in SOURCE_FILES),
-        "pack_content_id": pack_facts["content_id"],
-        "current_support_commit": resolve_support_commit(authority),
-    }
+    result["source_byte_count"] = sum(
+        len(git_bytes(authority, ["show", f"{IMPORT_AUTHORITY_COMMIT}:{(SOURCE_CATALOG_RELATIVE / relative).as_posix()}"]))
+        for relative in SOURCE_FILES
+    )
+    result["pack_content_id"] = pack_facts["content_id"]
+    return result
