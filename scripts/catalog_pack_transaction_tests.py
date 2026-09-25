@@ -94,7 +94,15 @@ def publication_transaction_proof() -> dict[str, Any]:
     entry = (ROOT / "scripts" / "catalog_pack.py").read_text()
     prefix, _, _ = entry.partition("def publish_command")
     require("catalog_pack_live" not in prefix, "ordinary catalog_pack entry imports the live registry")
-    require(not version_admitted("0.13.0", ">=0.12, <0.13"), "current pack range must reject 0.13.0")
+    pack_facts = validate_pack_tree()
+    require(
+        version_admitted("0.13.0", pack_facts["effigy_compatibility"]),
+        "pack compatibility must admit the released Effigy 0.13.0",
+    )
+    require(
+        not version_admitted("0.12.1", pack_facts["effigy_compatibility"]),
+        "pack compatibility must not claim the untested older Effigy 0.12 release",
+    )
 
     first, created, finalized = _first_publication()
     kinds = [kind for kind, _ in first.writes]

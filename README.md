@@ -9,16 +9,16 @@ current default-branch commit and blob.
 
 ## Foundation facts
 
-- pack: `effigy-default-catalog` `1.0.1`
-- compatibility: `>=0.12, <0.13`
+- pack: `effigy-default-catalog` `1.1.0`
+- compatibility: `>=0.13, <0.14`
 - pack source repository: `inflatable-cookie/effigy-catalog-pack`
 - one-time Effigy import commit: `055595340c2219d3d47296072f5818c524c341f0`
 - one-time Effigy catalog tree: `539471162c4976551ac720fdcffe6a1de33cef0f`
 - import-era support Git blob OID: `20d0194d52c0bbf46677f8d77ca96fb4505df50e`
-- pack content ID: `sha256:9498d33f1eccbb91e971b55f5169830baca26326a8f802408a0432e733254974`
+- pack content ID: `sha256:e92cc2f217fa2ba4de302b8376ec558afb042acd3a83e4d33ecfb03dc40606a3`
 
-The source repository commit, commit timestamp, annotated `v1.0.1` tag object,
-and peeled commit are the OCI provenance inputs. Ordinary QA models that
+The source repository commit, commit timestamp, annotated `v<pack-version>` tag
+object, and peeled commit are the OCI provenance inputs. Ordinary QA models that
 identity without creating the tag or contacting a registry.
 
 ## Validation
@@ -114,7 +114,9 @@ this implementation.
 
 The `pack:effigy` task installs `pack/` into a temporary Effigy home and
 exercises service listing, fragment extraction, and a workspace-plus-Postgres
-compose assembly. It never starts a container. The deterministic OCI task
+compose assembly. That assembly proves `browser_runtime` stays `none` by
+default and reaches the consumer build arg as `chromium` when explicitly set.
+It never starts a container. The deterministic OCI task
 writes only to `.effigy/`, which is ignored.
 
 See [the dated foundation evidence](docs/evidence/2026-09-01-catalog-pack-foundation-1104.md)

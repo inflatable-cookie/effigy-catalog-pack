@@ -15,8 +15,10 @@ settings checkpoint between those jobs, not a workflow PATCH.
 3. Ongoing support proof resolves `support/catalog-pack-update.toml` from
    Effigy's current default-branch commit, records that commit and blob, checks
    schema/oldest-version agreement, and admits every required version in the
-   pack compatibility range. The separate `import-proof` command is the only
-   check that uses the one-time import commit/tree/blob.
+   pack compatibility range. The routine publication split proof checks only
+   Effigy's immutable import commit/tree/blob identity. The separate
+   `import-proof` command is the only check that also requires the current pack
+   bytes to equal the one-time import snapshot.
 4. The OCI layout uses fixed JSON, sorted raw-file layers, the pack content ID,
    and the pack repository commit/timestamp as source-derived annotations.
    Rebuilding it produces the same manifest digest.
