@@ -4,7 +4,7 @@ title: "Effigy g10.019 — Publish browser runtime catalog pack"
 handoff_mode: worker-pr-loop
 worker_mode: implementation
 dispatch_authority: orchestrator
-status: ready-to-launch
+status: closed
 base_required: pushed-main
 queue_dispatch: northstar-queue
 queue_approval: "Tom explicitly approved the catalog-pack PR and, after independent review, the separately gated pack publication on 2026-09-25. Pack PR #7 is reviewed and merged; this handoff names the publication gate for v1.1.0 only."
@@ -23,10 +23,10 @@ Effigy's built-in catalog is a generated recovery snapshot. The retained `g10.01
 
 ## Current State
 
-- Queue closed `g10.018` after PR #7: reviewed head `f009a8c6718cbcf0c602dadea5938158cfeabeca`, merge `76d594d8e72731547c0c2918746d5c98291d77b4`, pack main closeout `c932c58f64cafd10a70d24907dc77fb81230bb01`.
-- Pack `pack/pack.toml` declares `1.1.0` and `>=0.13, <0.14`. Released Effigy `v0.13.0` and current support policy require `0.13.0`.
-- Read-only checks on pack main passed on 2026-09-25: `effigy pack:provider-controls`, `pack:support-releases`, `pack:publication-check`, and `pack:rehearse`. `v1.1.0` source tag was absent and the organization package was public. Recheck all live facts immediately before writing.
-- Queue creates an isolated worker workspace from pushed pack main. The retained Effigy `g10.017` worker/worktree stay parked; do not edit them.
+- PR [#8](https://github.com/inflatable-cookie/effigy-catalog-pack/pull/8) merged to `main` at `7fd4beaf105ce190bdea31c2a9c60ef1d8d6b4bb` on 2026-09-25 10:49:45 UTC. Its reviewed head was `7881d8f9b12826ed38329945022c85b846493bb4`.
+- The independent exact-head review posted `ready_to_merge` for that head; hosted `validate` passed. The merged PR adds only the publication evidence record.
+- The protected publication completed successfully. Annotated source tag `v1.1.0` (object `72f5d7551dc0430fcc83af36066463bd9f1aab82`) peels to `c932c58f64cafd10a70d24907dc77fb81230bb01`. OCI digest `sha256:5699fcb8641424cc6365feb2a4c4cc7f6056de385fc9dc49f771aec63f6078ba` is bound to SLSA provenance, anonymously pullable, byte-identical to the 42-file pack, and is the final `stable` target.
+- The approved next pointer is `g10.017`: resume its retained worker only after Queue callback identity is reconciled, then import these exact published bytes and provenance.
 
 ## Boundaries
 
@@ -38,8 +38,8 @@ Read `AGENTS.md`, `README.md`, `docs/validation.md`, Effigy contract `043`, the 
 
 ## Suggested Next Move
 
-Run the read-only preflight again in the Queue worktree and inspect the exact workflow inputs. If source and provider facts still match, create the annotated source tag at `c932c58f64cafd10a70d24907dc77fb81230bb01` and invoke protected `publication.yml` with `source_tag=v1.1.0` and `source_ref` equal to that full commit. Follow its environment and visibility checkpoints. Stop and report a specific blocker if the protected gate or any publication proof cannot complete.
+Resume the retained `g10.017` worker after Queue callback identity is reconciled. It can import the exact `v1.1.0` artifact and regenerate the baseline provenance lock.
 
 ## Completion Protocol
 
-After version publication and finalize succeed, verify source tag object/peeled commit, OCI digest, attestation, anonymous exact-byte pull, and `stable` read-back. Open one non-draft evidence PR; Queue obtains independent exact-head review, current-base CI, merge, and closeout. Report the accepted artifact digest and source provenance for `g10.017` baseline import. Publication itself is not evidence of task closeout.
+This task is closed after successful protected publication, accepted exact-head review, passing hosted validation, and merge of evidence PR #8. The source tag, OCI digest, attestation, anonymous exact-byte pull, and `stable` read-back are recorded in the [publication evidence](../evidence/2026-09-25-browser-runtime-pack-publication-g10-019.md) and [closeout log](../logs/2026-09/25-105246-browser-runtime-pack-publication-g10-019-closeout.md). The optional artifact-metadata storage record was not created because the workflow lacked `artifact-metadata:write`; the attestation itself verified. The independent reviewer could not re-read the plan-gated ruleset endpoint (403), so that detail relies on the earlier live observation recorded in the evidence. Continue with the approved `g10.017` pointer only after Queue callback identity reconciliation.
