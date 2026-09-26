@@ -1,5 +1,5 @@
 # Concepts that no longer exist. Run the check with
-# `effigy skill run northstar-lean/retired-concepts`.
+# `effigy skill run northstar/retired-concepts`.
 
 # Immutable artefacts: never rewritten, exempt from every retirement, and
 # skipped by check-links. pack/ is the published release content.
@@ -17,7 +17,7 @@ allow = ["CHANGELOG.md"]
 [[retired]]
 id = "papercuts-file"
 retired = "2026-09-26"
-replacement = "Queue papercuts. File with `papercut.add` (see the northstar-lean skill)."
+replacement = "Queue papercuts. File with `papercut.add` (see the northstar skill)."
 owner = "AGENTS.md"
 terms = ["PAPERCUTS.md"]
 allow = ["CHANGELOG.md"]

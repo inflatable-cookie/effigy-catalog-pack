@@ -12,12 +12,12 @@ snapshot.
 - What's next: `docs/plan.md`
 
 Tasks, briefs and status live in Queue, never in this repository (lean
-Northstar, `northstar-lean` skill).
+Northstar, `northstar` skill).
 
 ## Papercuts
 
 File small, recurring friction in Queue with `papercut.add` (see the
-`northstar-lean` skill). There is no `PAPERCUTS.md`.
+`northstar` skill). There is no `PAPERCUTS.md`.
 
 ## Product rules
 
