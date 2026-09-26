@@ -73,9 +73,10 @@ The two workflows stay narrow:
   `inflatable-cookie/effigy` and `contents: write` plus `pull_requests: write`.
   It fetches raw manifest bytes and binds their digest and descriptor size before
   token minting or materialization. It checks out current Effigy `main`,
-  composes the generated snapshot/lock/evidence, runs the committed Rust
+  composes the generated snapshot and lock, runs the committed Rust
   baseline verifier through a disposable integration harness, rechecks the
-  exact generated-only diff, and may only push a branch and open a PR. It has no
+  exact generated-only diff, and may only push a branch and open a PR whose
+  body carries the proposal evidence. It has no
   approval, merge, release, package, attestation, or publication authority.
 - `proposal-check` and the workflow guards are network-free. The App identity,
   installation, secrets, dispatch, and a live proposal PR are intentionally

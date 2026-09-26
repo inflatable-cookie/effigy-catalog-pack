@@ -22,7 +22,6 @@ from catalog_pack_proposal import (
     proposal_attestation_check,
     proposal_body,
     proposal_branch,
-    proposal_evidence_path,
     proposal_model_check,
     materialize_candidate,
     verify_pulled_artifact,
@@ -107,7 +106,6 @@ def proposal_artifact_args(args: argparse.Namespace) -> dict[str, Any]:
 def proposal_body_command(args: argparse.Namespace) -> dict[str, Any]:
     artifact_args = proposal_artifact_args(args)
     artifact = verify_pulled_artifact(**artifact_args)
-    artifact["evidence_path"] = proposal_evidence_path(artifact["source_identity"]["source_created"]).as_posix()
     body = proposal_body(artifact)
     require(args.output is not None, "proposal body output is required")
     output = Path(args.output)

@@ -144,7 +144,6 @@ EFFIGY_GITHUB_REPOSITORY = "inflatable-cookie/effigy"
 PROPOSAL_EFFIGY_REPOSITORY = EFFIGY_GITHUB_REPOSITORY
 PROPOSAL_BASELINE_SNAPSHOT = "crates/effigy-catalog/catalog"
 PROPOSAL_BASELINE_LOCK = "crates/effigy-catalog/catalog-pack.lock.toml"
-PROPOSAL_EVIDENCE_PREFIX = "catalog-pack-generated-baseline-proposal"
 PROPOSAL_APP_TOKEN_ENDPOINT = "/app/installations/{installation_id}/access_tokens"
 PROPOSAL_APP_REPOSITORY = "effigy"
 PROPOSAL_APP_REPOSITORY_FULL_NAME = EFFIGY_GITHUB_REPOSITORY

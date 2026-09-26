@@ -226,6 +226,13 @@ def workflow_check() -> dict[str, Any]:
     require("gh attestation verify" in proposal, "proposal does not verify the digest-bound attestation")
     require("proposal-attestation" in proposal, "proposal does not parse attestation proof")
     require("proposal-prepare" in proposal and "proposal-verify" in proposal, "proposal lacks preparation or verification")
+    require("proposal-body" in proposal, "proposal does not render a PR body")
+    require(
+        'git -C "$EFFIGY_ROOT" add --all -- crates/effigy-catalog/catalog crates/effigy-catalog/catalog-pack.lock.toml'
+        in proposal,
+        "proposal does not stage only the generated snapshot and lock",
+    )
+    require("docs/logs" not in proposal, "proposal still stages Effigy docs/logs")
     require('git -C "$EFFIGY_ROOT" push --set-upstream origin' in proposal, "proposal does not push only its branch")
     require("gh pr create" in proposal, "proposal does not open a review PR")
     require(not proposal_forbidden.search(proposal), "proposal workflow contains acceptance, release, or publication authority")

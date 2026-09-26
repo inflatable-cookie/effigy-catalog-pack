@@ -102,7 +102,7 @@ jobs:
           fetch-depth: 1
           persist-credentials: true
 
-      - name: Generate the candidate snapshot, lock, and evidence
+      - name: Generate the candidate snapshot and lock
         env:
           ARTIFACT_DIGEST: ${{ inputs.artifact_digest }}
           ARTIFACT_ROOT: ${{ runner.temp }}/catalog-pack-artifact
@@ -140,7 +140,7 @@ jobs:
           ARTIFACT_DESCRIPTOR: ${{ runner.temp }}/catalog-pack-descriptor.json
           EFFIGY_ROOT: .proposal/effigy
         run: |
-          git -C "$EFFIGY_ROOT" add --all -- crates/effigy-catalog/catalog crates/effigy-catalog/catalog-pack.lock.toml docs/logs
+          git -C "$EFFIGY_ROOT" add --all -- crates/effigy-catalog/catalog crates/effigy-catalog/catalog-pack.lock.toml
           python3 scripts/catalog_pack.py proposal-verify \
             --effigy-root "$EFFIGY_ROOT" \
             --artifact-root "$ARTIFACT_ROOT" \
