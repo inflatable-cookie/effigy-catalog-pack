@@ -1,39 +1,41 @@
 # Agent Instructions For Effigy Catalog Pack
 
 This public repository owns the canonical editable catalog-pack source. Effigy
-owns runtime behavior, compatibility authority, and its generated recovery
+owns runtime behaviour, compatibility authority, and its generated recovery
 snapshot.
 
-- Treat `/Users/tom/Dev/projects/effigy` only as the declared read-only sibling
-  authority; never edit it from this repository worker.
+## Where things live
+
+- Current state and how the pack works: `README.md`
+- Knowledge (one owner per fact): `docs/knowledge/README.md`
+- How a pack is published: `docs/knowledge/contracts/release.md`
+- What's next: `docs/plan.md`
+
+Tasks, briefs and status live in Queue, never in this repository (lean
+Northstar, `northstar-lean` skill).
+
+## Product rules
+
 - Keep canonical assets under `pack/`. Do not create a second editable asset
   root.
-- Use Effigy tasks as the repository command surface once the manifest exists.
-- Never publish, tag, create or change package visibility, move `stable`, or
-  perform a release mutation without an explicit operator gate named by the
-  active handoff.
-- The failed pre-push `v1.0.0` publication attempt is preserved immutable as
-  incident evidence: annotated tag object
-  `f2b59e65b1938600907de8dea566ad957e63be69` peeling to
-  `f70637abe1024cf7b54cabe58c3bd5877dcf8eca`. Never move, delete, recreate,
-  or dispatch against it; no OCI `v1.0.0` package version may be invented.
-- Card `1105` recovery authority covers the annotated `v1.0.1` source tag
-  created only from a reviewed repair head, the public GHCR package,
-  digest-bound attestation, and `stable` movement only. The repair PR must be
-  reviewed and merged before those mutations.
-- `.github/workflows/` edits are authorized for card `1105` within the
-  protected first-publication transaction and its read-only validation path.
-- Card `1108` may add the narrow generated-baseline proposal workflow and its
-  network-free validation. It does not authorize GitHub App registration or
-  installation, secret writes, dispatch, Effigy mutation, approval, merge, or
-  release; those provider/live steps require a separate explicit operator gate.
-- Keep ordinary validation network-free. Card `1105` may use its protected
-  workflow for the named GitHub/GHCR mutations and exact read-back proof.
-- Effigy's one-time import commit remains historical byte-import evidence.
-  Publication support authority resolves from Effigy's current default-branch
-  commit and records that commit plus the support-file blob.
-- Worker mode activates only from the committed Northstar handoff under
-  `docs/handoffs/`.
+- Treat the Effigy sibling checkout as a read-only authority; never edit it
+  from this repository.
+- Keep ordinary validation network-free. Only `support-releases` and
+  `provider-controls` make network calls, and those are GET-only.
+- The failed pre-push `v1.0.0` publication attempt is immutable incident
+  evidence: annotated tag object `f2b59e65b1938600907de8dea566ad957e63be69`,
+  peeling to `f70637abe1024cf7b54cabe58c3bd5877dcf8eca`. Never move, delete,
+  recreate or dispatch against it, and never invent an OCI `v1.0.0` version.
+- `docs/evidence/*.json` are read by the scripts; keep their paths.
 
-The governing architecture, contract, spec, roadmap, and card live in the
-Effigy sibling checkout and are named by the active handoff.
+## Guardrails
+
+- Never publish, tag, change package visibility, move `stable`, edit
+  `.github/workflows/`, or perform any release mutation without an explicit
+  operator instruction.
+- GitHub App registration or installation, secret writes and workflow
+  dispatch always need a separate operator go-ahead.
+
+## Validate
+
+`effigy qa` before opening a PR.

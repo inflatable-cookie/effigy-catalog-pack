@@ -41,7 +41,7 @@ effigy validate
 effigy qa
 ```
 
-For the card's one-time import proof, run:
+For the one-time import proof, run:
 
 ```sh
 python3 scripts/catalog_pack.py import-proof --effigy-root ../effigy
@@ -69,8 +69,7 @@ commit. It serializes a version-publish job and a finalize job. The operator
 makes the linked organization package public through GitHub package settings
 between those jobs. Finalize uses pinned `actions/attest` and is the only path
 that may set `CATALOG_PACK_PUBLICATION_MUTATE=1` and pass `--mutate`. Ordinary
-QA never imports the live registry adapter. This PR does not change
-selected-actions provider policy.
+QA never imports the live registry adapter.
 
 Hosted Actions, environment, and tag-rule evidence is normalized in
 [hosted-controls.json](docs/evidence/hosted-controls.json).
@@ -119,5 +118,5 @@ default and reaches the consumer build arg as `chromium` when explicitly set.
 It never starts a container. The deterministic OCI task
 writes only to `.effigy/`, which is ignored.
 
-See [the dated foundation evidence](docs/evidence/2026-09-01-catalog-pack-foundation-1104.md)
-and [the implementation-boundary evidence](docs/evidence/2026-09-02-catalog-pack-publication-implementation-1105.md).
+The dated foundation and implementation-boundary evidence is in Git history.
+Current knowledge is indexed in [docs/knowledge/](docs/knowledge/README.md).
