@@ -9,7 +9,6 @@ push a branch or open a pull request.
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any, Mapping
 
 from catalog_pack_inspect import require_verified_attestation_json
@@ -23,9 +22,6 @@ EFFIGY_SNAPSHOT_ROOT = Path(PROPOSAL_BASELINE_SNAPSHOT)
 EFFIGY_LOCK_PATH = Path(PROPOSAL_BASELINE_LOCK)
 _DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 _OBJECT_ID_RE = re.compile(r"^[0-9a-f]{40}$")
-_EVIDENCE_RE = re.compile(
-    rf"^docs/logs/\d{{4}}-\d{{2}}/\d{{2}}-\d{{6}}-{re.escape(PROPOSAL_EVIDENCE_PREFIX)}\.md$"
-)
 
 
 def require_sha256_digest(value: str, label: str = "artifact digest") -> str:
@@ -40,27 +36,7 @@ def proposal_branch(digest: str) -> str:
     return f"catalog-pack/baseline-{value}"
 
 
-def proposal_evidence_path(source_created: str) -> Path:
-    return _evidence_path(source_created)
-
-
-def _evidence_path(source_created: str) -> Path:
-    """Format the dated evidence path without allowing Path join ambiguity."""
-
-    require(
-        re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", source_created) is not None,
-        "artifact source_created is not UTC RFC3339 with whole seconds",
-    )
-    try:
-        moment = datetime.strptime(source_created, "%Y-%m-%dT%H:%M:%SZ")
-    except ValueError as error:
-        fail(f"artifact source_created is not a valid UTC timestamp: {error}")
-    return Path("docs/logs") / moment.strftime("%Y-%m") / (
-        moment.strftime("%d-%H%M%S-") + PROPOSAL_EVIDENCE_PREFIX + ".md"
-    )
-
-
-def validate_proposal_paths(paths: list[str], evidence_path: str | None = None) -> dict[str, Any]:
+def validate_proposal_paths(paths: list[str]) -> dict[str, Any]:
     """Enforce the only paths a proposal commit may change."""
 
     require(paths, "proposal diff is empty")
@@ -79,22 +55,19 @@ def validate_proposal_paths(paths: list[str], evidence_path: str | None = None) 
     require(snapshot_paths, "proposal diff does not change the generated catalog snapshot")
     require(PROPOSAL_BASELINE_LOCK in normalized, "proposal diff does not change the typed baseline lock")
 
-    evidence = [path for path in normalized if _EVIDENCE_RE.fullmatch(path)]
-    require(len(evidence) == 1, "proposal diff must contain exactly one dated baseline evidence file")
-    if evidence_path is not None:
-        require(evidence[0] == evidence_path, f"proposal evidence path is {evidence[0]}, expected {evidence_path}")
+    logs_paths = [path for path in normalized if path == "docs/logs" or path.startswith("docs/logs/")]
+    require(not logs_paths, f"proposal diff contains out-of-scope docs/logs paths: {logs_paths}")
 
     unexpected = [
         path
         for path in normalized
-        if path not in snapshot_paths and path != PROPOSAL_BASELINE_LOCK and path not in evidence
+        if path not in snapshot_paths and path != PROPOSAL_BASELINE_LOCK
     ]
     require(not unexpected, f"proposal diff contains non-generated paths: {unexpected}")
     return {
         "allowed": True,
         "snapshot_paths": sorted(snapshot_paths),
         "lock_path": PROPOSAL_BASELINE_LOCK,
-        "evidence_path": evidence[0],
         "path_count": len(normalized),
     }
 
@@ -254,41 +227,18 @@ def render_baseline_lock(facts: Mapping[str, Any], identity: Mapping[str, str], 
     ).encode("utf-8")
 
 
-def render_proposal_evidence(report: Mapping[str, Any], evidence_path: Path) -> bytes:
-    identity = report["source_identity"]
-    return (
-        "# Catalog-Pack Generated Baseline Proposal\n\n"
-        "Status: generated-only proposal input; Effigy review and merge required\n"
-        "Authority: `inflatable-cookie/effigy`\n"
-        f"Artifact digest: `{report['manifest_digest']}`\n"
-        f"Pack: `{report['pack_id']}` `{report['pack_version']}`\n"
-        f"Content identity: `{report['content_id']}`\n"
-        f"Source commit: `{identity['source_commit']}`\n"
-        f"Source tag: `{identity['source_tag']}`\n"
-        f"Source tag object: `{identity['tag_object']}`\n\n"
-        "This file is proposal evidence. It does not accept, merge, publish, "
-        "release, or activate the baseline. The proposal workflow changes only "
-        "the generated catalog snapshot, typed lock, and this dated evidence.\n\n"
-        "The pack workflow verifies the digest-bound attestation, exact artifact "
-        "inventory and bytes, Effigy's offline baseline verifier, and the path "
-        "allowlist before creating a branch and pull request.\n"
-    ).encode("utf-8")
-
-
 def _expected_candidate(
     artifact_root: Path,
     manifest_path: Path,
     artifact_digest: str,
     descriptor_path: Path,
-) -> tuple[dict[str, Any], Path, bytes, bytes]:
+) -> tuple[dict[str, Any], bytes]:
     report = verify_pulled_artifact(artifact_root, manifest_path, artifact_digest, descriptor_path)
     identity = dict(report["source_identity"])
     identity["source_repository"] = PACK_GITHUB_REPOSITORY
     lock = render_baseline_lock(report, identity, artifact_digest)
-    evidence_path = _evidence_path(identity["source_created"])
-    evidence = render_proposal_evidence(report, evidence_path)
-    report = {**report, "evidence_path": evidence_path.as_posix(), "lock_bytes": len(lock), "evidence_bytes": len(evidence)}
-    return report, evidence_path, lock, evidence
+    report = {**report, "lock_bytes": len(lock)}
+    return report, lock
 
 
 def materialize_candidate(
@@ -302,10 +252,9 @@ def materialize_candidate(
 
     require(effigy_root.is_dir() and not effigy_root.is_symlink(), f"Effigy checkout is not a real directory: {effigy_root}")
     require(not _git_status_paths(effigy_root), "Effigy checkout must be clean before proposal materialization")
-    report, evidence_path, lock, evidence = _expected_candidate(artifact_root, manifest_path, artifact_digest, descriptor_path)
+    report, lock = _expected_candidate(artifact_root, manifest_path, artifact_digest, descriptor_path)
     target_snapshot = effigy_root / EFFIGY_SNAPSHOT_ROOT
     target_lock = effigy_root / EFFIGY_LOCK_PATH
-    target_evidence = effigy_root / evidence_path
 
     if target_snapshot.exists() or target_snapshot.is_symlink():
         require(target_snapshot.is_dir() and not target_snapshot.is_symlink(), "existing Effigy baseline snapshot is not a real directory")
@@ -316,13 +265,6 @@ def materialize_candidate(
         require(target_lock.is_file() and not target_lock.is_symlink(), "existing Effigy baseline lock is not a regular file")
     target_lock.parent.mkdir(parents=True, exist_ok=True)
     target_lock.write_bytes(lock)
-
-    if target_evidence.exists() or target_evidence.is_symlink():
-        require(target_evidence.is_file() and not target_evidence.is_symlink(), "existing proposal evidence is not a regular file")
-        require(target_evidence.read_bytes() == evidence, "existing proposal evidence differs from the deterministic candidate")
-    else:
-        target_evidence.parent.mkdir(parents=True, exist_ok=True)
-        target_evidence.write_bytes(evidence)
 
     report.update(
         {
@@ -356,15 +298,13 @@ def verify_generated_only_diff(
 ) -> dict[str, Any]:
     """Recheck exact bytes and status after staging, catching hand edits."""
 
-    report, evidence_path, lock, evidence = _expected_candidate(artifact_root, manifest_path, artifact_digest, descriptor_path)
+    report, lock = _expected_candidate(artifact_root, manifest_path, artifact_digest, descriptor_path)
     paths = _git_status_paths(effigy_root)
-    path_report = validate_proposal_paths(paths, evidence_path.as_posix())
+    path_report = validate_proposal_paths(paths)
     snapshot = effigy_root / EFFIGY_SNAPSHOT_ROOT
     require(tree_snapshot(snapshot) == tree_snapshot(artifact_root), "Effigy candidate snapshot bytes differ from the verified artifact")
     candidate_lock = effigy_root / EFFIGY_LOCK_PATH
     require(candidate_lock.read_bytes() == lock, "Effigy candidate lock bytes differ from deterministic generation")
-    candidate_evidence = effigy_root / evidence_path
-    require(candidate_evidence.read_bytes() == evidence, "Effigy proposal evidence bytes differ from deterministic generation")
     report.update({"diff_verified": True, "changed_paths": paths, "path_policy": path_report})
     return report
 
@@ -383,19 +323,24 @@ def proposal_body(report: Mapping[str, Any]) -> str:
     identity = report["source_identity"]
     return (
         "## Generated Effigy catalog baseline proposal\n\n"
+        "Status: generated-only proposal input; Effigy review and merge required\n"
+        "Authority: `inflatable-cookie/effigy`\n\n"
         "This PR is prepared by the catalog-pack proposal workflow from one "
         "verified, digest-addressed artifact. It is intentionally limited to "
-        "generated baseline content and evidence.\n\n"
+        "the generated catalog snapshot and typed lock.\n\n"
         f"- Artifact digest: `{report['manifest_digest']}`\n"
         f"- Pack: `{report['pack_id']}` `{report['pack_version']}`\n"
         f"- Content identity: `{report['content_id']}`\n"
         f"- Source commit: `{identity['source_commit']}`\n"
         f"- Source tag: `{identity['source_tag']}`\n"
-        f"- Source tag object: `{identity['tag_object']}`\n"
-        f"- Evidence: `{report['evidence_path']}`\n\n"
-        "The workflow verified the digest-bound attestation, exact artifact "
+        f"- Source tag object: `{identity['tag_object']}`\n\n"
+        "This body is proposal evidence. It does not accept, merge, publish, "
+        "release, or activate the baseline. The proposal workflow changes only "
+        "the generated catalog snapshot and typed lock.\n\n"
+        "The pack workflow verifies the digest-bound attestation, exact artifact "
         "inventory and bytes, Effigy's committed offline baseline verifier, "
-        "and the generated-only path policy before opening this PR.\n\n"
+        "and the generated-only path allowlist before creating a branch and "
+        "pull request.\n\n"
         "Effigy owners must review and validate this change. The pack workflow "
         "does not approve, merge, release, publish, or activate it.\n"
     )

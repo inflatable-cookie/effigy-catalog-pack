@@ -16,33 +16,36 @@ def _expect_failure(action: Any, label: str) -> None:
 
 
 def generated_only_path_allowlist_proof() -> dict[str, Any]:
-    evidence = "docs/logs/2026-09/02-114910-catalog-pack-generated-baseline-proposal.md"
     valid = [
         "crates/effigy-catalog/catalog/pack.toml",
         "crates/effigy-catalog/catalog/postgres/service.toml",
         PROPOSAL_BASELINE_LOCK,
-        evidence,
     ]
-    validate_proposal_paths(valid, evidence)
+    logs = "docs/logs/2026-09/02-114910-catalog-pack-generated-baseline-proposal.md"
+    validate_proposal_paths(valid)
     _expect_failure(
-        lambda: validate_proposal_paths(valid + ["crates/effigy-catalog/src/lib.rs"], evidence),
+        lambda: validate_proposal_paths(valid + ["crates/effigy-catalog/src/lib.rs"]),
         "Effigy product-code diff",
     )
     _expect_failure(
-        lambda: validate_proposal_paths(valid + [".github/workflows/release.yml"], evidence),
+        lambda: validate_proposal_paths(valid + [".github/workflows/release.yml"]),
         "Effigy workflow diff",
     )
     _expect_failure(
-        lambda: validate_proposal_paths(valid + ["docs/README.md"], evidence),
+        lambda: validate_proposal_paths(valid + ["docs/README.md"]),
         "unrelated documentation diff",
     )
     _expect_failure(
-        lambda: validate_proposal_paths(valid[:-1], None),
-        "incomplete evidence diff",
+        lambda: validate_proposal_paths(valid + [logs]),
+        "docs/logs proposal evidence file",
+    )
+    _expect_failure(
+        lambda: validate_proposal_paths(valid[:-1]),
+        "incomplete lock diff",
     )
     _expect_failure(
         lambda: validate_proposal_paths(
-            ["crates/effigy-catalog/catalog/../src/lib.rs", PROPOSAL_BASELINE_LOCK, evidence], evidence
+            ["crates/effigy-catalog/catalog/../src/lib.rs", PROPOSAL_BASELINE_LOCK]
         ),
         "traversing proposal path",
     )
@@ -51,7 +54,8 @@ def generated_only_path_allowlist_proof() -> dict[str, Any]:
         "product_code_rejected": True,
         "workflow_rejected": True,
         "unrelated_docs_rejected": True,
-        "incomplete_evidence_rejected": True,
+        "docs_logs_rejected": True,
+        "incomplete_lock_rejected": True,
         "traversal_rejected": True,
     }
 
@@ -169,19 +173,34 @@ def candidate_diff_proof() -> dict[str, Any]:
         materialize_candidate(effigy, artifact, manifest_path, built["manifest_digest"], descriptor_path)
         verified = verify_generated_only_diff(effigy, artifact, manifest_path, built["manifest_digest"], descriptor_path)
         require(verified["diff_verified"] is True, "candidate diff did not verify")
+        require(not (effigy / "docs/logs").exists(), "proposal wrote evidence into Effigy docs/logs")
         (effigy / EFFIGY_SNAPSHOT_ROOT / "README.md").write_bytes(b"hand edited\n")
         _expect_failure(
             lambda: verify_generated_only_diff(effigy, artifact, manifest_path, built["manifest_digest"], descriptor_path),
             "hand-edited candidate snapshot",
         )
         (effigy / EFFIGY_SNAPSHOT_ROOT / "README.md").write_bytes((artifact / "README.md").read_bytes())
+        logs_file = effigy / "docs/logs/2026-09/02-114910-catalog-pack-generated-baseline-proposal.md"
+        logs_file.parent.mkdir(parents=True, exist_ok=True)
+        logs_file.write_text("out of scope\n", encoding="utf-8")
+        _expect_failure(
+            lambda: verify_generated_only_diff(effigy, artifact, manifest_path, built["manifest_digest"], descriptor_path),
+            "docs/logs candidate diff",
+        )
+        shutil.rmtree(effigy / "docs/logs")
         (effigy / "crates/effigy-catalog/src").mkdir(parents=True)
         (effigy / "crates/effigy-catalog/src/lib.rs").write_text("malicious change\n", encoding="utf-8")
         _expect_failure(
             lambda: verify_generated_only_diff(effigy, artifact, manifest_path, built["manifest_digest"], descriptor_path),
             "product-code candidate diff",
         )
-    return {"candidate_materialized": True, "clean_diff_verified": True, "hand_edit_rejected": True, "product_code_rejected": True}
+    return {
+        "candidate_materialized": True,
+        "clean_diff_verified": True,
+        "hand_edit_rejected": True,
+        "docs_logs_rejected": True,
+        "product_code_rejected": True,
+    }
 
 
 def app_token_scope_proof() -> dict[str, Any]:
@@ -269,6 +288,39 @@ def effigy_verifier_seam_proof() -> dict[str, Any]:
     }
 
 
+def proposal_body_proof() -> dict[str, Any]:
+    report = {
+        "manifest_digest": "sha256:" + "b" * 64,
+        "pack_id": FOUNDATION_PACK_ID,
+        "pack_version": "1.1.0",
+        "content_id": "sha256:" + "c" * 64,
+        "source_identity": {
+            "source_commit": "a" * 40,
+            "source_tag": "v1.1.0",
+            "tag_object": "d" * 40,
+        },
+    }
+    body = proposal_body(report)
+    require("Status: generated-only proposal input" in body, "proposal body lost status evidence")
+    require("Authority: `inflatable-cookie/effigy`" in body, "proposal body lost authority evidence")
+    require(report["manifest_digest"] in body, "proposal body lost artifact digest")
+    require(f"`{report['pack_id']}` `{report['pack_version']}`" in body, "proposal body lost pack identity")
+    require(report["content_id"] in body, "proposal body lost content identity")
+    require(report["source_identity"]["source_commit"] in body, "proposal body lost source commit")
+    require(report["source_identity"]["source_tag"] in body, "proposal body lost source tag")
+    require(report["source_identity"]["tag_object"] in body, "proposal body lost source tag object")
+    require("This body is proposal evidence" in body, "proposal body lost the evidence statement")
+    require("does not accept, merge, publish" in body, "proposal body lost the non-acceptance statement")
+    require("docs/logs" not in body, "proposal body still names an Effigy logs path")
+    return {
+        "status_present": True,
+        "authority_present": True,
+        "identity_fields_present": True,
+        "non_acceptance_present": True,
+        "logs_path_absent": True,
+    }
+
+
 def no_provider_mutation_proof() -> dict[str, Any]:
     workflow = (ROOT / ".github" / "workflows" / "proposal.yml").read_text(encoding="utf-8")
     forbidden = re.compile(
@@ -292,9 +344,16 @@ def no_provider_mutation_proof() -> dict[str, Any]:
     require("proposal" not in publish_body, "publish path depends on proposal")
     artifact_check = workflow.index("proposal-artifact-check")
     token_mint = workflow.index("Mint a narrow short-lived Effigy installation token")
-    materialize = workflow.index("Generate the candidate snapshot, lock, and evidence")
+    materialize = workflow.index("Generate the candidate snapshot and lock")
     branch_push = workflow.index('git -C "$EFFIGY_ROOT" push')
     require(artifact_check < token_mint < materialize < branch_push, "manifest verification does not precede token, materialization, and push")
+    require("docs/logs" not in workflow, "proposal workflow still stages Effigy docs/logs")
+    require("proposal-body" in workflow, "proposal workflow does not render a PR body")
+    require(
+        'git -C "$EFFIGY_ROOT" add --all -- crates/effigy-catalog/catalog crates/effigy-catalog/catalog-pack.lock.toml'
+        in workflow,
+        "proposal workflow does not stage only the generated snapshot and lock",
+    )
     return {
         "branch_and_pr_only": True,
         "approve_merge_release_rejected": True,
@@ -311,6 +370,7 @@ def proposal_model_proof() -> dict[str, Any]:
         "immutable_artifact": immutable_artifact_input_proof(),
         "exact_lock": exact_lock_generation_proof(),
         "candidate_diff": candidate_diff_proof(),
+        "proposal_body": proposal_body_proof(),
         "app_token": app_token_scope_proof(),
         "effigy_verifier": effigy_verifier_seam_proof(),
         "no_provider_mutation": no_provider_mutation_proof(),

@@ -58,7 +58,7 @@ absent-`stable` behavior, without contacting a registry.
 `pack:proposal-check` proves the generated-baseline proposal boundary without
 provider access. It hash-binds raw OCI manifest bytes and descriptor size to the
 requested digest, rejects hand-edited artifact bytes, unsafe or unrelated
-Effigy paths, incomplete lock/evidence changes, foreign-owner same-name
+Effigy paths, incomplete lock changes, a `docs/logs/` file, foreign-owner same-name
 repositories, and broad GitHub App token responses. The model also proves
 byte-deterministic lock generation and the temporary seam that invokes Effigy's
 committed offline baseline verifier.
@@ -105,9 +105,9 @@ attestation, then requests a short-lived GitHub App installation token scoped to
 canonical `inflatable-cookie/effigy` with `contents: write` and
 `pull_requests: write`. It may create one
 generated-only Effigy branch and pull request. The allowlist is limited to
-`crates/effigy-catalog/catalog/`, its typed lock, and one dated proposal
-evidence file; Effigy owners retain validation, review, merge, release, and
-publication authority. App registration, installation, secrets, dispatch, and
+`crates/effigy-catalog/catalog/` and its typed lock. Proposal evidence is
+rendered in the pull-request body. Effigy owners retain validation, review,
+merge, release, and publication authority. App registration, installation, secrets, dispatch, and
 hosted execution remain a separate operator checkpoint and are not claimed by
 this implementation.
 
