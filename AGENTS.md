@@ -14,6 +14,11 @@ snapshot.
 Tasks, briefs and status live in Queue, never in this repository (lean
 Northstar, `northstar-lean` skill).
 
+## Papercuts
+
+File small, recurring friction in Queue with `papercut.add` (see the
+`northstar-lean` skill). There is no `PAPERCUTS.md`.
+
 ## Product rules
 
 - Keep canonical assets under `pack/`. Do not create a second editable asset

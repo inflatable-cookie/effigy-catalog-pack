@@ -9,3 +9,11 @@ owner = "docs/knowledge/README.md"
 terms = ["roadmap card", "generation index", "northstar:lifecycle", "chatterbox handoff"]
 paths = ["docs/roadmaps/", "docs/handoffs/"]
 allow = ["CHANGELOG.md"]
+
+[[retired]]
+id = "papercuts-file"
+retired = "2026-09-26"
+replacement = "Queue papercuts. File with `papercut.add` (see the northstar-lean skill)."
+owner = "AGENTS.md"
+terms = ["PAPERCUTS.md"]
+allow = ["CHANGELOG.md"]
