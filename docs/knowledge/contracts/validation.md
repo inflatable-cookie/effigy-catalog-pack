@@ -94,6 +94,6 @@ python3 scripts/catalog_pack.py provider-controls
 It uses only explicit GitHub `GET` requests, compares the current Actions
 policy, workflow permissions, protected environment, and `v*` ruleset, and
 does not read or rewrite the static snapshot. The captured observation is
-[`live-provider-controls.json`](evidence/live-provider-controls.json). Hosted
+[`live-provider-controls.json`](../../evidence/live-provider-controls.json). Hosted
 pull-request validation is recorded separately from both provider evidence
 files so an evidence commit cannot make its own run evidence self-referential.
