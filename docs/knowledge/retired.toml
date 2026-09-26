@@ -1,6 +1,10 @@
 # Concepts that no longer exist. Run the check with
 # `effigy skill run northstar-lean/retired-concepts`.
 
+# Immutable artefacts: never rewritten, exempt from every retirement, and
+# skipped by check-links. pack/ is the published release content.
+frozen = ["pack/"]
+
 [[retired]]
 id = "northstar-process-records"
 retired = "2026-09-26"
