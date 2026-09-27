@@ -9,7 +9,6 @@ snapshot.
 - Current state and how the pack works: `README.md`
 - Knowledge (one owner per fact): `docs/knowledge/README.md`
 - How a pack is published: `docs/knowledge/contracts/release.md`
-- What's next: `docs/plan.md`
 
 Tasks, briefs and status live in Queue, never in this repository (lean
 Northstar, `northstar` skill).
@@ -17,7 +16,7 @@ Northstar, `northstar` skill).
 ## Papercuts
 
 File small, recurring friction in Queue with `papercut.add` (see the
-`northstar` skill). There is no `PAPERCUTS.md`.
+`northstar` skill). The repository holds no papercut file or triage folder.
 
 ## Product rules
 

@@ -7,4 +7,4 @@ for foundation facts, validation and the workflows.
 
 - Knowledge: [knowledge/README.md](knowledge/README.md)
 - Publishing: [knowledge/contracts/release.md](knowledge/contracts/release.md)
-- What's next: [plan.md](plan.md)
+- What's next: `plan.md` (Git history)
