@@ -33,14 +33,37 @@ def format_semver(value: tuple[int, int, int]) -> str:
 
 
 def workspace_package_version(cargo_toml: str) -> str:
-    match = re.search(
-        r'(?ms)^\[workspace\.package\][^\[]*?^version\s*=\s*"([^"]+)"',
-        cargo_toml,
+    headers = list(re.finditer(r"(?m)^\s*\[([^\]\n]+)\]\s*(?:#.*)?$", cargo_toml))
+    package_headers = [match for match in headers if match.group(1).strip() == "workspace.package"]
+    require(
+        len(package_headers) == 1,
+        "Effigy Cargo.toml must declare exactly one [workspace.package] table",
     )
-    require(match is not None, "Effigy Cargo.toml does not declare [workspace.package] version")
-    version = match.group(1)
+    header = package_headers[0]
+    following_header = next((match for match in headers if match.start() > header.start()), None)
+    section = cargo_toml[header.end() : following_header.start() if following_header else None]
+    try:
+        package = parse_toml(section)
+    except TOMLDecodeError as error:
+        fail(f"Effigy Cargo.toml [workspace.package] table is invalid TOML: {error}")
+    version = package.get("version")
+    require(isinstance(version, str), "Effigy Cargo.toml [workspace.package].version is missing or not a string")
+    require(
+        re.fullmatch(r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)", version) is not None,
+        f"workspace package version is not a release semantic version: {version}",
+    )
     parse_semver_tuple(version, "workspace package version")
     return version
+
+
+def authority_workspace_package_version(authority: Path) -> str:
+    cargo_manifest = authority / "Cargo.toml"
+    require(cargo_manifest.is_file(), f"Effigy Cargo manifest is missing: {cargo_manifest}")
+    try:
+        cargo_toml = cargo_manifest.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as error:
+        fail(f"cannot read Effigy Cargo manifest {cargo_manifest}: {error}")
+    return workspace_package_version(cargo_toml)
 
 
 def version_admitted(version: str, spec: str) -> bool:
