@@ -9,9 +9,13 @@ settings checkpoint between those jobs, not a workflow PATCH.
 
 1. `pack/` is the only editable asset root. It has one canonical inventory, no
    links or special files, and a computed content identity.
-2. The pack manifest and every fragment pass independent foundation shape
-   checks. The current Effigy binary performs the authoritative fragment-schema
-   validation during the local install smoke.
+2. The local Effigy install smoke binds binary identity to the resolved,
+   read-only authority workspace's `[workspace.package].version` in
+   `Cargo.toml`. It parses the complete `effigy v…` version line and accepts
+   optional `+local.…` build metadata only when the semantic release exactly
+   matches that workspace version. The pack manifest and every fragment pass
+   independent foundation shape checks; the current Effigy binary performs
+   authoritative fragment-schema validation during the smoke.
 3. Ongoing support proof resolves `support/catalog-pack-update.toml` from
    Effigy's current default-branch commit, records that commit and blob, checks
    schema/oldest-version agreement, and admits every required version in the
@@ -50,6 +54,7 @@ The independent commands are:
 
 ```sh
 effigy pack:entrypoint-check
+effigy pack:smoke-identity-check
 python3 scripts/catalog_pack.py validate
 python3 scripts/catalog_pack.py validate --effigy-root ../effigy --require-authority
 python3 scripts/catalog_pack.py import-proof --effigy-root ../effigy

@@ -3,6 +3,25 @@
 from __future__ import annotations
 
 from catalog_pack_shared import *
+from catalog_pack_policy import authority_workspace_package_version
+
+
+EFFIGY_VERSION_OUTPUT = re.compile(
+    r"^effigy v(?P<release>(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))"
+    r"(?P<local_metadata>\+local\.[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
+)
+
+
+def validate_effigy_version_output(version_output: str, expected_release: str) -> None:
+    """Require the exact current workspace release, allowing local build metadata."""
+
+    expected = re.fullmatch(r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)", expected_release)
+    require(expected is not None, f"Effigy workspace release is not a release semantic version: {expected_release}")
+    actual = EFFIGY_VERSION_OUTPUT.fullmatch(version_output)
+    require(
+        actual is not None and actual.group("release") == expected_release,
+        f"Effigy smoke binary is not the current workspace release: {version_output}",
+    )
 
 
 def resolve_effigy_command(authority: Path, requested: str | None, environment: dict[str, str]) -> list[str]:
@@ -60,6 +79,7 @@ def unwrap_effigy_result(payload: dict[str, Any]) -> dict[str, Any]:
 def effigy_smoke(authority: Path | None, requested_binary: str | None) -> dict[str, Any]:
     require(authority is not None, "Effigy authority checkout is required for the binary smoke test")
     pack_facts = validate_pack_tree()
+    current_release = authority_workspace_package_version(authority)
     with tempfile.TemporaryDirectory(prefix="effigy-catalog-pack-smoke-") as temporary:
         temporary_root = Path(temporary)
         home = temporary_root / "home"
@@ -82,10 +102,7 @@ def effigy_smoke(authority: Path | None, requested_binary: str | None) -> dict[s
         command = resolve_effigy_command(authority, requested_binary, environment)
 
         version_output = run_effigy(command, ["--version"], repo, environment)
-        require(
-            CURRENT_EFFIGY_RELEASE in version_output,
-            f"Effigy smoke binary is not the current workspace release: {version_output}",
-        )
+        validate_effigy_version_output(version_output, current_release)
 
         install_output = run_effigy(
             command,
