@@ -9,13 +9,13 @@ current default-branch commit and blob.
 
 ## Foundation facts
 
-- pack: `effigy-default-catalog` `1.1.0`
+- pack: `effigy-default-catalog` `1.1.1` (unpublished patch candidate)
 - compatibility: `>=0.13, <0.14`
 - pack source repository: `inflatable-cookie/effigy-catalog-pack`
 - one-time Effigy import commit: `055595340c2219d3d47296072f5818c524c341f0`
 - one-time Effigy catalog tree: `539471162c4976551ac720fdcffe6a1de33cef0f`
 - import-era support Git blob OID: `20d0194d52c0bbf46677f8d77ca96fb4505df50e`
-- pack content ID: `sha256:e92cc2f217fa2ba4de302b8376ec558afb042acd3a83e4d33ecfb03dc40606a3`
+- pack content ID: `sha256:c0f01547849f61e7f9465e6bc7fa483378c0748e75e7fe3fe0534ea0de797bc9`
 
 The source repository commit, commit timestamp, annotated `v<pack-version>` tag
 object, and peeled commit are the OCI provenance inputs. Ordinary QA models that
@@ -37,9 +37,18 @@ checkouts can set `EFFIGY_ROOT` or pass `--effigy-root`.
 ```sh
 effigy tasks
 effigy test --plan
+effigy pack:entrypoint-check
 effigy validate
 effigy qa
 ```
+
+The entrypoint check generates and exercises both catalog wrappers from their
+Dockerfiles in private local fixtures. The optional bridge log falls back to
+stderr when it cannot be written. A non-root start reports that it cannot
+install a system mkcert CA or initialize root-owned PHP secrets and mail
+configuration; it leaves those files untouched and continues to the requested
+command. Root startup retains the existing PHP secret modes and dev-owned SSH
+bridge socket mode `0600`.
 
 For the one-time import proof, run:
 

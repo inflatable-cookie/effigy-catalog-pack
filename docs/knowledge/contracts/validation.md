@@ -34,6 +34,14 @@ settings checkpoint between those jobs, not a workflow PATCH.
    narrow App token scope, Effigy verifier wiring, and no
    approve/merge/release/publication path.
 
+The focused `pack:entrypoint-check` selector extracts and runs the generated
+entrypoints from both `workspace-rust-bun/Dockerfile` and `php-fpm/Dockerfile`
+in private temporary fixtures. It runs as a non-root host user, injects their
+root-owned paths into the fixture, and proves argv/exit preservation, stderr
+fallback for unwritable logs, honest forwarding and trust diagnostics, and the
+mode `0600` bridge policy. It does not build or start containers or use the
+network.
+
 The GET-only `support-releases` command checks that a GitHub Release exists for
 every required version and that `as_of_release` equals the latest non-draft,
 non-prerelease Effigy release. It is not part of `doctor`, `validate`, or `qa`.
@@ -41,6 +49,7 @@ non-prerelease Effigy release. It is not part of `doctor`, `validate`, or `qa`.
 The independent commands are:
 
 ```sh
+effigy pack:entrypoint-check
 python3 scripts/catalog_pack.py validate
 python3 scripts/catalog_pack.py validate --effigy-root ../effigy --require-authority
 python3 scripts/catalog_pack.py import-proof --effigy-root ../effigy

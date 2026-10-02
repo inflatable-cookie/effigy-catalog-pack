@@ -4,6 +4,7 @@ minimum_effigy_version = "0.12.1"
 [tasks]
 "pack:inventory" = "python3 scripts/catalog_pack.py inventory"
 "pack:validate" = "python3 scripts/catalog_pack.py validate"
+"pack:entrypoint-check" = "python3 scripts/catalog_pack_entrypoint_check.py"
 "pack:support" = "python3 scripts/catalog_pack.py validate --require-authority"
 "pack:import-proof" = "python3 scripts/catalog_pack.py import-proof"
 "pack:oci" = "python3 scripts/catalog_pack.py oci-layout"
@@ -22,6 +23,7 @@ health = [
 
 validate = [
   { task = "pack:validate" },
+  { task = "pack:entrypoint-check" },
   { task = "pack:support" },
   { task = "pack:oci" },
   { task = "pack:rehearse" },
