@@ -56,3 +56,21 @@ move `stable` only through the finalize job.
 - Reuse or move a published tag. `v1.0.0` is permanent incident evidence (see
   `AGENTS.md`).
 - Publish from an unreviewed head or outside the protected workflow.
+
+## Approved v1.1.1 publication
+
+Tom answered the exact reviewed publication proposal on 2026-10-02:
+"Approve. You have blanket approval" (Queue decision
+36a3caf2-c19d-4d59-9a51-e1ab92f03179 v2). This authorizes the annotated
+v1.1.1 source tag at c7ec113e0271157e867a6c27025268b34b7435f7 and the
+existing protected publication workflow, including its required human
+environment gates and public-package/finalize checkpoints. Full Queue pack
+QA 33b07484-52b7-4364-9db7-c1fca5d018a5 passed at that exact source.
+
+Expected pack content identity is
+sha256:c0f01547849f61e7f9465e6bc7fa483378c0748e75e7fe3fe0534ea0de797bc9.
+This ruling is not a published receipt or OCI digest. Verify the actual
+version, attestation, anonymous pull and stable readback before resuming
+Effigy068's retained artifact import. Preserve immutable versions, failed
+v1.0.0 evidence, existing secrets and live images. No workflow edits or
+Effigy binary release are included.
