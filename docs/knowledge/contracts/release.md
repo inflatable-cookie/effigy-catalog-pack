@@ -4,6 +4,22 @@ A pack release is an OCI package at `ghcr.io/inflatable-cookie/effigy-catalog-pa
 published from an annotated source tag `v<pack-version>`, attested, and then
 promoted to `stable`. Publishing is always an operator action.
 
+## Non-root entrypoint repair authority
+
+Tom requested on 2026-10-02: "Can we unblock 068?" Under his standing
+bounded-work authority, this permits the canonical non-root entrypoint fix
+and review in this repository, plus preparation of the exact release proposal.
+The generated Effigy recovery snapshot must continue to come from an accepted
+published artifact; hand-editing its bytes or provenance is not a repair path.
+Preserve command argv and exit behavior, root-mode bridge socket protections,
+and honest diagnostics when optional forwarding or trust setup is unavailable.
+
+This request does not authorize publication, tag creation, workflow dispatch,
+package visibility changes, movement of `stable`, secret changes, or live image
+deployment. Those actions need the operator's explicit instruction against the
+reviewed release proposal. A later Effigy import must use the actual published
+identity and pass non-root behavior checks without skipping the defect.
+
 ## Steps
 
 1. Change `pack/` and the pack manifest version. Run `effigy qa`, which covers
