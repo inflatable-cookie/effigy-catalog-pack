@@ -79,7 +79,7 @@ The two workflows stay narrow:
   checks out Effigy `main` for current support and never passes `--mutate`.
 - `publication.yml` is manual, accepts only the canonical annotated source tag
   `v<pack-version>` (not `refs/tags/v…`) plus its full peeled commit, and names
-  the protected `catalog-pack-publication-rehearsal` environment. It serializes
+  the protected `catalog-pack-publication` environment. It serializes
   `publish` then `finalize` by that canonical source tag, exports
   `GITHUB_TOKEN`/`GH_TOKEN` from `${{ github.token }}`, and sets
   `GITHUB_ENVIRONMENT` explicitly. `publish` may write the version package;

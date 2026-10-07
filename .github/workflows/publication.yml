@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   publish:
-    environment: catalog-pack-publication-rehearsal
+    environment: catalog-pack-publication
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -29,7 +29,7 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ github.token }}
       GH_TOKEN: ${{ github.token }}
-      GITHUB_ENVIRONMENT: catalog-pack-publication-rehearsal
+      GITHUB_ENVIRONMENT: catalog-pack-publication
     outputs:
       manifest_digest: ${{ steps.publish.outputs.manifest_digest }}
       support_commit: ${{ steps.publish.outputs.support_commit }}
@@ -94,7 +94,7 @@ jobs:
     # package public through GitHub package settings, then approve this job.
     # Premature approval fails closed at finalize-preflight and is retryable.
     needs: publish
-    environment: catalog-pack-publication-rehearsal
+    environment: catalog-pack-publication
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -104,7 +104,7 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ github.token }}
       GH_TOKEN: ${{ github.token }}
-      GITHUB_ENVIRONMENT: catalog-pack-publication-rehearsal
+      GITHUB_ENVIRONMENT: catalog-pack-publication
     steps:
       - name: Check out the catalog-pack source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
