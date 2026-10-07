@@ -9,13 +9,16 @@ current default-branch commit and blob.
 
 ## Foundation facts
 
-- pack: `effigy-default-catalog` `1.1.1` (unpublished patch candidate)
-- compatibility: `>=0.13, <0.14`
+- pack: `effigy-default-catalog` `1.1.2` (unpublished patch candidate)
+- compatibility: `>=0.13, <0.15`
 - pack source repository: `inflatable-cookie/effigy-catalog-pack`
 - one-time Effigy import commit: `055595340c2219d3d47296072f5818c524c341f0`
 - one-time Effigy catalog tree: `539471162c4976551ac720fdcffe6a1de33cef0f`
 - import-era support Git blob OID: `20d0194d52c0bbf46677f8d77ca96fb4505df50e`
-- pack content ID: `sha256:c0f01547849f61e7f9465e6bc7fa483378c0748e75e7fe3fe0534ea0de797bc9`
+- pack content ID: `sha256:f65724ad5eef245fe4f2e6c3e831f1761b415daba8d8a5d4744d30341a6af022`
+
+The `v1.1.1` source tag and GHCR version are already immutable. This
+compatibility metadata update therefore uses the next patch candidate, `1.1.2`.
 
 The source repository commit, commit timestamp, annotated `v<pack-version>` tag
 object, and peeled commit are the OCI provenance inputs. Ordinary QA models that
@@ -38,6 +41,7 @@ checkouts can set `EFFIGY_ROOT` or pass `--effigy-root`.
 effigy tasks
 effigy test --plan
 effigy pack:entrypoint-check
+effigy pack:compatibility-check
 effigy validate
 effigy qa
 ```
