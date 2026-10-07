@@ -14,7 +14,7 @@
   },
   "api_calls": {
     "actions": "GET /repos/inflatable-cookie/effigy-catalog-pack/actions/permissions",
-    "environment": "GET /repos/inflatable-cookie/effigy-catalog-pack/environments/catalog-pack-publication-rehearsal",
+    "environment": "GET /repos/inflatable-cookie/effigy-catalog-pack/environments/catalog-pack-publication",
     "selected_actions": "GET /repos/inflatable-cookie/effigy-catalog-pack/actions/permissions/selected-actions",
     "tag_ruleset": "GET /repos/inflatable-cookie/effigy-catalog-pack/rulesets/22050144",
     "workflow_permissions": "GET /repos/inflatable-cookie/effigy-catalog-pack/actions/permissions/workflow"
@@ -22,8 +22,8 @@
   "environment": {
     "can_admins_bypass": false,
     "deployment_branch_policy": null,
-    "id": 21041670008,
-    "name": "catalog-pack-publication-rehearsal",
+    "id": 23677948419,
+    "name": "catalog-pack-publication",
     "prevent_self_review": false,
     "required_reviewers": [
       {
@@ -36,8 +36,8 @@
   },
   "evidence_kind": "live-provider-observation",
   "mode": "live-read-only",
-  "observed_at": "2026-09-02T11:36:33Z",
-  "observed_head": "9588750f5ed06b1191e768fe55d8f81af8df2a8f",
+  "observed_at": "2026-10-07T12:05:08Z",
+  "observed_head": "51313ef249738656e4b8ad69b4937e26a9da3d69",
   "read_only": true,
   "repository": "inflatable-cookie/effigy-catalog-pack",
   "static_snapshot": {

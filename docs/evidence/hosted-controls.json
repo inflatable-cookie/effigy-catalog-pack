@@ -18,7 +18,7 @@
     }
   },
   "environment": {
-    "name": "catalog-pack-publication-rehearsal",
+    "name": "catalog-pack-publication",
     "wait_timer": 0,
     "prevent_self_review": false,
     "can_admins_bypass": false,
@@ -49,7 +49,7 @@
     "actions": "GET /repos/inflatable-cookie/effigy-catalog-pack/actions/permissions",
     "selected_actions": "GET /repos/inflatable-cookie/effigy-catalog-pack/actions/permissions/selected-actions",
     "workflow_permissions": "GET /repos/inflatable-cookie/effigy-catalog-pack/actions/permissions/workflow",
-    "environment": "GET /repos/inflatable-cookie/effigy-catalog-pack/environments/catalog-pack-publication-rehearsal",
+    "environment": "GET /repos/inflatable-cookie/effigy-catalog-pack/environments/catalog-pack-publication",
     "tag_ruleset": "GET /repos/inflatable-cookie/effigy-catalog-pack/rulesets/22050144"
   }
 }

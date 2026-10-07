@@ -8,7 +8,7 @@ from catalog_pack_shared import *
 
 
 REPOSITORY = "inflatable-cookie/effigy-catalog-pack"
-ENVIRONMENT_NAME = "catalog-pack-publication-rehearsal"
+ENVIRONMENT_NAME = "catalog-pack-publication"
 RULESET_ID = 22050144
 
 API_PATHS = {

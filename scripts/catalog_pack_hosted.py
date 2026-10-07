@@ -39,7 +39,7 @@ def hosted_control_check() -> dict[str, Any]:
 
     environment = evidence.get("environment")
     require(isinstance(environment, dict), "hosted environment evidence is missing")
-    require(environment.get("name") == "catalog-pack-publication-rehearsal", "hosted environment has the wrong name")
+    require(environment.get("name") == PUBLICATION_ENVIRONMENT, "hosted environment has the wrong name")
     require(environment.get("wait_timer") == 0, "hosted environment wait timer changed")
     require(environment.get("prevent_self_review") is False, "hosted environment blocks the sole operator's self-review")
     require(environment.get("can_admins_bypass") is False, "hosted environment permits administrator bypass")
@@ -156,7 +156,7 @@ def workflow_check() -> dict[str, Any]:
     require("pull_request:" not in on_section, "publication must not run on pull_request")
     require(re.search(r"(?m)^  push:", on_section) is None, "publication must not run on push")
     require("push-to-registry:" in jobs_section, "finalize must push attestation to the registry")
-    require("catalog-pack-publication-rehearsal" in publication, "publication must name its protected environment")
+    require(PUBLICATION_ENVIRONMENT in publication, "publication must name its protected environment")
     require("group: catalog-pack-publication-${{ inputs.source_tag }}" in publication, "publication must serialize by source tag")
     require("not refs/tags/v1.0.1" in publication, "publication must reject the refs/tags source-tag alias")
     require("cancel-in-progress: false" in publication, "publication must not cancel an in-progress version")
