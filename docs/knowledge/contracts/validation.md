@@ -22,7 +22,13 @@ settings checkpoint between those jobs, not a workflow PATCH.
    pack compatibility range. The routine publication split proof checks only
    Effigy's immutable import commit/tree/blob identity. The separate
    `import-proof` command is the only check that also requires the current pack
-   bytes to equal the one-time import snapshot.
+   bytes to equal the one-time import snapshot. `pack:compatibility-check`
+   exercises the compatibility boundary: 0.13.0, 0.13.1, 0.14.0, and 0.14.1
+   are admitted, while 0.12.0 and 0.15.0 are refused. This range proof says
+   nothing about the separate Effigy gateway regression. The consumer smoke
+   runs only the current Effigy binary; admission of 0.13.0 and 0.13.1 is
+   grounded in the current support policy, not a claim that those binaries
+   were executed.
 4. The OCI layout uses fixed JSON, sorted raw-file layers, the pack content ID,
    and the pack repository commit/timestamp as source-derived annotations.
    Rebuilding it produces the same manifest digest.
@@ -54,6 +60,7 @@ The independent commands are:
 
 ```sh
 effigy pack:entrypoint-check
+effigy pack:compatibility-check
 effigy pack:smoke-identity-check
 python3 scripts/catalog_pack.py validate
 python3 scripts/catalog_pack.py validate --effigy-root ../effigy --require-authority
