@@ -74,3 +74,21 @@ version, attestation, anonymous pull and stable readback before resuming
 Effigy068's retained artifact import. Preserve immutable versions, failed
 v1.0.0 evidence, existing secrets and live images. No workflow edits or
 Effigy binary release are included.
+
+## Approved v1.1.2 publication
+
+Tom answered "Authorize exact proposal" through the operator board on
+2026-10-08 (Queue decision 5c9088de-838e-4d87-90f1-6968928b318d v2).
+The approved source is bffcd0d8446286c49609c5b4659fe1d6f5d69c0f,
+with content identity
+sha256:f65724ad5eef245fe4f2e6c3e831f1761b415daba8d8a5d4744d30341a6af022
+and compatibility >=0.13, <0.15. This permits the new annotated v1.1.2
+tag and existing protected publication workflow, including verified stable
+promotion. Its required human environment approvals remain in force.
+
+The real annotated tag determines the final OCI provenance identity;
+rehearsal digests are not published receipts. Verify the actual version,
+digest-bound attestation, anonymous bytes, canonical public package linkage
+and stable readback. Preserve v1.1.1 and failed v1.0.0 identities. Workflow
+edits, secrets, App controls, live image deployment and a generated Effigy
+import remain outside this publication approval.
