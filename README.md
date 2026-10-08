@@ -9,7 +9,7 @@ current default-branch commit and blob.
 
 ## Foundation facts
 
-- pack: `effigy-default-catalog` `1.1.2` (unpublished patch candidate)
+- pack: `effigy-default-catalog` `1.1.2` (published; current `stable`)
 - compatibility: `>=0.13, <0.15`
 - pack source repository: `inflatable-cookie/effigy-catalog-pack`
 - one-time Effigy import commit: `055595340c2219d3d47296072f5818c524c341f0`
@@ -17,8 +17,12 @@ current default-branch commit and blob.
 - import-era support Git blob OID: `20d0194d52c0bbf46677f8d77ca96fb4505df50e`
 - pack content ID: `sha256:f65724ad5eef245fe4f2e6c3e831f1761b415daba8d8a5d4744d30341a6af022`
 
-The `v1.1.1` source tag and GHCR version are already immutable. This
-compatibility metadata update therefore uses the next patch candidate, `1.1.2`.
+The `v1.1.1` and `v1.1.2` source tags and GHCR versions are immutable. The
+v1.1.2 artifact digest is
+`sha256:c7ed52c19ff498c0e4fe28eb33adf629fc96d9594962b95df3040b8a452c6d3d`,
+from source `bffcd0d8446286c49609c5b4659fe1d6f5d69c0f` and annotated tag object
+`e0b8c8bdb74cccf7b61f6ff4b8ccf8b67f1c713a`. Its digest-bound attestation,
+anonymous manifest bytes and `stable` pointer are verified.
 
 The source repository commit, commit timestamp, annotated `v<pack-version>` tag
 object, and peeled commit are the OCI provenance inputs. Ordinary QA models that

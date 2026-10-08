@@ -38,6 +38,14 @@ identity and pass non-root behavior checks without skipping the defect.
    package, attests it with pinned `actions/attest`, checks an anonymous pull,
    and moves `stable`.
 
+The current finalizer also exercises live rollback when a different previous
+`stable` exists: it retags candidate, previous, then candidate again. The
+v1.1.2 receipt reports this sequence with `rollback_exercised: true`.
+Its final readback is the candidate, but the workflow's "move stable once"
+label does not describe these intermediate writes. Keep rollback modeling
+distinct from claims of a single live promotion; a correction needs reviewed
+implementation before a later publication.
+
 ## Verify
 
 - The finalize job reads back the package, attestation and `stable` digest.
