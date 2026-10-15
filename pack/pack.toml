@@ -6,4 +6,4 @@ version = "1.2.0"
 description = "Default Effigy service catalog"
 
 [compatibility]
-effigy = ">=0.13, <0.15"
+effigy = ">=0.13, <0.16"

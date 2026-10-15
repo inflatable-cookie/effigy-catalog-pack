@@ -13,9 +13,9 @@ from catalog_pack_policy import parse_support_policy, prove_current_support, ver
 from catalog_pack_shared import CheckFailure, fail, require, validate_pack_tree
 
 
-EXPECTED_COMPATIBILITY = ">=0.13, <0.15"
-ADMITTED_VERSIONS = ("0.13.0", "0.13.1", "0.14.0", "0.14.1")
-REJECTED_VERSIONS = ("0.12.0", "0.15.0")
+EXPECTED_COMPATIBILITY = ">=0.13, <0.16"
+ADMITTED_VERSIONS = ("0.13.0", "0.13.1", "0.14.0", "0.14.1", "0.15.0")
+REJECTED_VERSIONS = ("0.12.0", "0.16.0")
 
 
 def expect_failure(label: str, check: Callable[[], Any], expected: str) -> None:
