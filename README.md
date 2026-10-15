@@ -9,8 +9,10 @@ current default-branch commit and blob.
 
 ## Foundation facts
 
-- pack: `effigy-default-catalog` `1.1.2` (published; current `stable`)
-- compatibility: `>=0.13, <0.15`
+- pack: `effigy-default-catalog` `1.1.2` (published; current `stable`,
+  compatibility `>=0.13, <0.15`)
+- next candidate on `main`: `1.2.0` (adds `silo`), compatibility `>=0.13, <0.16`
+  so Effigy 0.15 keeps installed-pack selection and workspace handoff
 - pack source repository: `inflatable-cookie/effigy-catalog-pack`
 - one-time Effigy import commit: `055595340c2219d3d47296072f5818c524c341f0`
 - one-time Effigy catalog tree: `539471162c4976551ac720fdcffe6a1de33cef0f`
