@@ -131,7 +131,11 @@ def effigy_smoke(authority: Path | None, requested_binary: str | None) -> dict[s
             )
         )
         fragments = service_list.get("fragments")
-        require(isinstance(fragments, list) and len(fragments) == 14, "Effigy service list did not expose all catalog fragments")
+        expected_fragments = sum(1 for entry in PACK_ROOT.iterdir() if (entry / "service.toml").is_file())
+        require(
+            isinstance(fragments, list) and len(fragments) == expected_fragments,
+            "Effigy service list did not expose all catalog fragments",
+        )
         require(
             all(fragment.get("source", "").startswith("installed-pack") for fragment in fragments),
             "Effigy service list did not resolve the installed pack",
