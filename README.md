@@ -9,22 +9,24 @@ current default-branch commit and blob.
 
 ## Foundation facts
 
-- pack: `effigy-default-catalog` `1.1.2` (published; current `stable`,
-  compatibility `>=0.13, <0.15`)
-- next candidate on `main`: `1.2.0` (adds `silo`), compatibility `>=0.13, <0.16`
-  so Effigy 0.15 keeps installed-pack selection and workspace handoff
+- pack: `effigy-default-catalog` `1.2.0` (published; current `stable`,
+  compatibility `>=0.13, <0.16`, adds `silo`)
 - pack source repository: `inflatable-cookie/effigy-catalog-pack`
 - one-time Effigy import commit: `055595340c2219d3d47296072f5818c524c341f0`
 - one-time Effigy catalog tree: `539471162c4976551ac720fdcffe6a1de33cef0f`
 - import-era support Git blob OID: `20d0194d52c0bbf46677f8d77ca96fb4505df50e`
-- pack content ID: `sha256:f65724ad5eef245fe4f2e6c3e831f1761b415daba8d8a5d4744d30341a6af022`
+- pack content ID: `sha256:539d63cf709110748902bd01a5cd6c5a359ca3636ffffaa87ddb95dff1125dd1`
 
-The `v1.1.1` and `v1.1.2` source tags and GHCR versions are immutable. The
-v1.1.2 artifact digest is
+The `v1.1.1`, `v1.1.2` and `v1.2.0` source tags and GHCR versions are
+immutable. The v1.2.0 artifact digest is
+`sha256:7f34c21acce23033d5972868df13a9b061dab995b50b38adb954f7a1d1b5ef5b`,
+from source `588125bd68ad0c86106eb68b7c11d8c60be3fc86` and annotated tag
+object `06704bdad8247ea2b6a414a77bf77bba58cf768e`; its digest-bound
+attestation, anonymous manifest bytes and `stable` pointer are verified.
+The v1.1.2 artifact digest is
 `sha256:c7ed52c19ff498c0e4fe28eb33adf629fc96d9594962b95df3040b8a452c6d3d`,
-from source `bffcd0d8446286c49609c5b4659fe1d6f5d69c0f` and annotated tag object
-`e0b8c8bdb74cccf7b61f6ff4b8ccf8b67f1c713a`. Its digest-bound attestation,
-anonymous manifest bytes and `stable` pointer are verified.
+from source `bffcd0d8446286c49609c5b4659fe1d6f5d69c0f` and annotated tag
+object `e0b8c8bdb74cccf7b61f6ff4b8ccf8b67f1c713a`.
 
 The source repository commit, commit timestamp, annotated `v<pack-version>` tag
 object, and peeled commit are the OCI provenance inputs. Ordinary QA models that
