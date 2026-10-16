@@ -100,3 +100,22 @@ digest-bound attestation, anonymous bytes, canonical public package linkage
 and stable readback. Preserve v1.1.1 and failed v1.0.0 identities. Workflow
 edits, secrets, App controls, live image deployment and a generated Effigy
 import remain outside this publication approval.
+
+## Approved v1.2.0 publication
+
+Tom approved publication in the Effigy v0.15 audit thread on 2026-10-15:
+"Happy for you to publish the catalog pack", after reviewing PR #17
+(compatibility `>=0.13, <0.16`, admitting Effigy 0.15). The approved source
+is 588125bd68ad0c86106eb68b7c11d8c60be3fc86 (annotated tag object
+06704bdad8247ea2b6a414a77bf77bba58cf768e), with content identity
+sha256:539d63cf709110748902bd01a5cd6c5a359ca3636ffffaa87ddb95dff1125dd1.
+The approval covered the new v1.2.0 tag and the existing protected
+publication workflow, including its human environment gates and stable
+promotion.
+
+Published result: OCI manifest
+sha256:7f34c21acce23033d5972868df13a9b061dab995b50b38adb954f7a1d1b5ef5b,
+attested, with `stable` moved to v1.2.0. Effigy 0.15.0 pins this artifact as
+its compiled baseline (`crates/effigy-catalog/catalog-pack.lock.toml`).
+Preserve v1.1.1, v1.1.2 and failed v1.0.0 identities. Workflow edits,
+secrets and an Effigy binary release were outside this approval.
