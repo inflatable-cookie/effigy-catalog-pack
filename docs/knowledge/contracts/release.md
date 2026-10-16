@@ -115,7 +115,9 @@ promotion.
 
 Published result: OCI manifest
 sha256:7f34c21acce23033d5972868df13a9b061dab995b50b38adb954f7a1d1b5ef5b,
-attested, with `stable` moved to v1.2.0. Effigy 0.15.0 pins this artifact as
-its compiled baseline (`crates/effigy-catalog/catalog-pack.lock.toml`).
+attested, with `stable` moved to v1.2.0. Effigy's default branch pins this
+artifact as its compiled baseline
+(`crates/effigy-catalog/catalog-pack.lock.toml`); no released Effigy version
+includes that pin yet.
 Preserve v1.1.1, v1.1.2 and failed v1.0.0 identities. Workflow edits,
 secrets and an Effigy binary release were outside this approval.
